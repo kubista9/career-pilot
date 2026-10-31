@@ -3,12 +3,20 @@
 from __future__ import annotations
 
 import argparse
+import json
 import subprocess
 import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from career_pilot import __version__
+from career_pilot import __version__, tracker
+from career_pilot.brief import BRIEF_KEYS, render_brief
+from career_pilot.doctor import run_doctor
+from career_pilot.letters import (
+    DEFAULT_MAX_CHARS,
+    DEFAULT_MAX_PARAGRAPHS,
+    check_letter,
+)
 from career_pilot.paths import (
     DataDirError,
     check_data_dir,
@@ -22,10 +30,22 @@ from career_pilot.privacy import (
     scan_content,
     unprotected_private_files,
 )
+from career_pilot.profile import (
+    Profile,
+    ProfileError,
+    data_path,
+    load_profile,
+    lookup,
+    optional_profile,
+)
+from career_pilot.scoring import parse_criteria, score_job
 
 EXIT_OK = 0
 EXIT_PRIVATE_FILES = 1
 EXIT_DATA_DIR = 2
+EXIT_PROFILE = 3
+EXIT_TRACKER = 4
+EXIT_LETTER = 5
 
 
 def find_repo_root(start: Path) -> Path:
@@ -40,6 +60,9 @@ def find_repo_root(start: Path) -> Path:
     if result.returncode != 0:
         raise SystemExit("career-pilot must be run inside the career-pilot git repository.")
     return Path(result.stdout.strip())
+
+
+# --- repo and data dir checks -----------------------------------------------------------------
 
 
 def privacy_check(repo_root: Path) -> int:
@@ -88,10 +111,182 @@ def setup_check(create: bool, repo_only: bool, repo_root: Path) -> int:
     return status or privacy_check(repo_root)
 
 
+def doctor() -> int:
+    issues = run_doctor(resolve_data_dir())
+    for issue in issues:
+        print(issue)
+    errors = sum(issue.level == "error" for issue in issues)
+    if not issues:
+        print("Ready: the profile is complete and every file it points to exists.")
+    elif not errors:
+        print("Usable, with warnings. Fix them before relying on the results.")
+    return EXIT_PROFILE if errors else EXIT_OK
+
+
+# --- scoring, briefs, letters -----------------------------------------------------------------
+
+
+def score(track: str, criteria: str, apply_type: str | None, tags: list[str], as_json: bool) -> int:
+    try:
+        profile = load_profile(resolve_data_dir())
+        result = score_job(profile, track, parse_criteria(criteria), apply_type, tags)
+    except (ProfileError, KeyError, ValueError) as error:
+        print(f"Score: PROBLEM - {error}")
+        return EXIT_PROFILE
+    if as_json:
+        print(json.dumps(result.as_dict()))
+        return EXIT_OK
+    verdict = "met" if result.meets_threshold else "not met"
+    print(f"score: {result.total}/{result.maximum} (threshold {result.threshold}: {verdict})")
+    if result.gates_failed:
+        print(f"dropped: below the gate on {', '.join(result.gates_failed)}")
+    if result.minimums_failed:
+        print(f"below the minimum on: {', '.join(result.minimums_failed)}")
+    print(f"route: {result.route}")
+    print(f"auto_submit: {str(result.auto_submit).lower()}")
+    return EXIT_OK
+
+
+def brief(mode: str) -> int:
+    try:
+        print(render_brief(load_profile(resolve_data_dir()), mode), end="")
+    except ProfileError as error:
+        print(f"Brief: PROBLEM - {error}")
+        return EXIT_PROFILE
+    return EXIT_OK
+
+
+def letter_check(file: str, max_chars: int | None) -> int:
+    text = sys.stdin.read() if file == "-" else Path(file).expanduser().read_text()
+    try:
+        profile = optional_profile(resolve_data_dir())
+    except ProfileError as error:
+        print(f"Letter check: PROBLEM - {error}")
+        return EXIT_PROFILE
+    settings = lookup(profile, "letters", {}) or {}
+    issues = check_letter(
+        text,
+        max_chars=max_chars or int(settings.get("max_chars", DEFAULT_MAX_CHARS)),
+        max_paragraphs=int(settings.get("max_paragraphs", DEFAULT_MAX_PARAGRAPHS)),
+        banned_phrases=settings.get("banned_phrases") or [],
+        forbidden_claims=settings.get("forbidden_claims") or [],
+        allow_dashes=bool(settings.get("allow_dashes", False)),
+    )
+    if not issues:
+        print(f"Letter check: OK ({len(text.strip())} characters)")
+        return EXIT_OK
+    print("Letter check: PROBLEM")
+    for issue in issues:
+        print(f"  - {issue}")
+    return EXIT_LETTER
+
+
+# --- tracker ----------------------------------------------------------------------------------
+
+
+def tracker_paths(profile: Profile, data_dir: Path) -> tuple[Path, Path | None]:
+    """The tracker file, and the applications folder if status folders are switched on."""
+    csv_path = data_path(data_dir, lookup(profile, "tracker.file"), "tracker/applications.csv")
+    if not lookup(profile, "tracker.status_folders", False):
+        return csv_path, None
+    folder = data_path(data_dir, lookup(profile, "tracker.applications_dir"), "applications")
+    return csv_path, folder
+
+
+def run_tracker(args: argparse.Namespace) -> int:
+    data_dir = resolve_data_dir()
+    try:
+        profile = optional_profile(data_dir)
+        csv_path, applications_dir = tracker_paths(profile, data_dir)
+        return tracker_command(args, csv_path, applications_dir)
+    except (ProfileError, tracker.TrackerError) as error:
+        print(f"Tracker: PROBLEM - {error}")
+        return EXIT_TRACKER
+
+
+def tracker_command(args: argparse.Namespace, csv_path: Path, applications_dir: Path | None) -> int:
+    if args.tracker_command == "add":
+        values = {
+            field: getattr(args, field) or "" for field in tracker.FIELDS if hasattr(args, field)
+        }
+        row = tracker.add(csv_path, values)
+        print(f"Added {row['job_id']}: {row['company']}, {row['role']} ({row['status']})")
+    elif args.tracker_command == "find":
+        rows = tracker.load(csv_path)
+        matches = tracker.find(rows, args.job_id, args.company, args.role)
+        if not matches:
+            print("new: not in the tracker")
+        for row, reason in matches:
+            print(
+                f"duplicate: {row['job_id']}, {row['company']}, {row['role']} "
+                f"[{row['status']}] ({reason})"
+            )
+    elif args.tracker_command == "status":
+        row, moved = tracker.set_status(
+            csv_path,
+            args.job_id,
+            args.status,
+            note=args.note or "",
+            applications_dir=None if args.no_move else applications_dir,
+        )
+        print(f"{row['job_id']} is now {row['status']}")
+        if moved:
+            print(f"Folder: {moved}")
+    elif args.tracker_command == "list":
+        for row in tracker.load(csv_path):
+            if args.status in (None, row["status"]) and args.route in (None, row["route"]):
+                print(
+                    f"{row['job_id']}\t{row['status']}\t{row['route']}\t{row['score']}\t"
+                    f"{row['company']}\t{row['role']}"
+                )
+    elif args.tracker_command == "counts":
+        print(json.dumps(tracker.counts(tracker.load(csv_path))))
+    elif args.tracker_command == "check":
+        problems = tracker.missing_fields(tracker.load(csv_path))
+        for job_id, fields in problems:
+            print(f"{job_id}: missing {', '.join(fields)}")
+        if not problems:
+            print("Tracker: OK - route, CV and link are filled in for every job")
+    return EXIT_OK
+
+
+# --- parser -----------------------------------------------------------------------------------
+
+
+def add_tracker_parser(commands: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    parser = commands.add_parser("tracker", help="Add, find and update jobs in the local tracker.")
+    sub = parser.add_subparsers(dest="tracker_command", required=True)
+
+    add = sub.add_parser("add", help="Add a job. Refuses duplicates.")
+    for field in tracker.FIELDS:
+        if field not in ("found", "updated"):
+            add.add_argument(f"--{field.replace('_', '-')}", dest=field, default="")
+
+    find = sub.add_parser("find", help="Is this job already in the tracker?")
+    find.add_argument("--job-id")
+    find.add_argument("--company")
+    find.add_argument("--role")
+
+    status = sub.add_parser("status", help="Change a job's status.")
+    status.add_argument("job_id")
+    status.add_argument("status", choices=tracker.STATUSES)
+    status.add_argument("--note")
+    status.add_argument(
+        "--no-move", action="store_true", help="Do not move the job's folder (status folders on)."
+    )
+
+    listing = sub.add_parser("list", help="List jobs, one per line.")
+    listing.add_argument("--status", choices=tracker.STATUSES)
+    listing.add_argument("--route")
+
+    sub.add_parser("counts", help="Number of jobs per status and per route (JSON).")
+    sub.add_parser("check", help="List jobs with an empty route, CV or link.")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="career-pilot",
-        description="Local-first job-hunt helper. Never submits or sends anything.",
+        description="Helpers for the career-pilot skill. Never submits or sends anything.",
     )
     parser.add_argument("--version", action="version", version=f"career-pilot {__version__}")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -112,18 +307,48 @@ def build_parser() -> argparse.ArgumentParser:
     commands.add_parser(
         "privacy-check", help="Check that no private file or value is tracked or addable in git."
     )
+    commands.add_parser("doctor", help="Check that the profile is complete and its files exist.")
+
+    scoring = commands.add_parser("score", help="Add up a job's criteria and pick its route.")
+    scoring.add_argument("--track", default="default")
+    scoring.add_argument(
+        "--criteria", required=True, help="name=number pairs, e.g. skill=3,growth=1"
+    )
+    scoring.add_argument("--apply-type")
+    scoring.add_argument("--tag", action="append", default=[], dest="tags")
+    scoring.add_argument("--json", action="store_true", dest="as_json")
+
+    brief_parser = commands.add_parser("brief", help="Print only the profile keys a mode needs.")
+    brief_parser.add_argument("mode", choices=sorted(BRIEF_KEYS))
+
+    letter = commands.add_parser("letter-check", help="Check a cover letter against the rules.")
+    letter.add_argument("file", help="Letter text file, or - for standard input.")
+    letter.add_argument("--max-chars", type=int)
+
+    add_tracker_parser(commands)
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    repo_root = find_repo_root(Path.cwd())
     if args.command == "setup-check":
         return setup_check(
-            create=args.create_data_dir, repo_only=args.repo_only, repo_root=repo_root
+            create=args.create_data_dir,
+            repo_only=args.repo_only,
+            repo_root=find_repo_root(Path.cwd()),
         )
     if args.command == "privacy-check":
-        return privacy_check(repo_root)
+        return privacy_check(find_repo_root(Path.cwd()))
+    if args.command == "doctor":
+        return doctor()
+    if args.command == "score":
+        return score(args.track, args.criteria, args.apply_type, args.tags, args.as_json)
+    if args.command == "brief":
+        return brief(args.mode)
+    if args.command == "letter-check":
+        return letter_check(args.file, args.max_chars)
+    if args.command == "tracker":
+        return run_tracker(args)
     return EXIT_OK  # pragma: no cover - argparse rejects unknown commands
 
 

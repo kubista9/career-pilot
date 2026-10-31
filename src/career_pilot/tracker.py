@@ -1,0 +1,220 @@
+"""`career-pilot tracker`: the local application tracker (one CSV file).
+
+The CSV is the source of truth for what was found, scored, prepared and sent.
+This module is the only thing that should write it, so duplicates, statuses and
+folder moves follow the same rules every run.
+"""
+
+from __future__ import annotations
+
+import csv
+import os
+import re
+from collections import Counter
+from collections.abc import Iterable, Mapping
+from datetime import date
+from pathlib import Path
+
+FIELDS: tuple[str, ...] = (
+    "job_id",
+    "company",
+    "role",
+    "route",
+    "score",
+    "status",
+    "apply_type",
+    "cv",
+    "letter_status",
+    "found",
+    "updated",
+    "link",
+    "notes",
+)
+# `not_relevant`: logged so it is not seen again, never prepared or sent.
+STATUSES: tuple[str, ...] = (
+    "to_review",
+    "applied",
+    "interview",
+    "offer",
+    "rejected",
+    "not_relevant",
+)
+LETTER_STATUSES: tuple[str, ...] = ("none", "drafted", "sent", "not_needed")
+
+# A tracker or an email never moves these back to "not yet sent" or "applied".
+LOCKED_STATUSES = frozenset({"interview", "offer", "rejected"})
+UNLOCKING_STATUSES = frozenset({"to_review", "applied"})
+
+# Fields that should be filled for the summary's "to fix" list.
+EXPECTED_FIELDS: tuple[str, ...] = ("route", "cv", "link")
+
+MANIFEST = "MOVE-MANIFEST.tsv"
+
+Row = dict[str, str]
+
+
+class TrackerError(Exception):
+    """The tracker cannot do what was asked."""
+
+
+class DuplicateError(TrackerError):
+    """The job is already in the tracker."""
+
+
+def normalize(text: str) -> str:
+    """Lower case letters and digits only, so 'Acme B.V.' and 'acme bv' compare equal."""
+    return re.sub(r"[^a-z0-9]+", "", text.casefold())
+
+
+def slugify(text: str) -> str:
+    """Folder name for a company: lower case words joined by hyphens."""
+    return re.sub(r"[^a-z0-9]+", "-", text.casefold()).strip("-")
+
+
+def load(path: Path) -> list[Row]:
+    """All rows, or an empty list if the tracker does not exist yet."""
+    if not path.is_file():
+        return []
+    with path.open(newline="") as handle:
+        return [{field: row.get(field) or "" for field in FIELDS} for row in csv.DictReader(handle)]
+
+
+def save(path: Path, rows: Iterable[Mapping[str, str]]) -> None:
+    """Write all rows (replace the file in one step so a crash cannot leave half a file)."""
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    temp = path.with_name(f"{path.name}.tmp")
+    with temp.open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=FIELDS)
+        writer.writeheader()
+        writer.writerows(rows)
+    temp.chmod(0o600)
+    os.replace(temp, path)
+
+
+def find(
+    rows: Iterable[Row],
+    job_id: str | None = None,
+    company: str | None = None,
+    role: str | None = None,
+) -> list[tuple[Row, str]]:
+    """Rows that are the same job, with the reason: same job ID, or same company and role."""
+    matches: list[tuple[Row, str]] = []
+    for row in rows:
+        if job_id and normalize(row["job_id"]) == normalize(job_id):
+            matches.append((row, "same job ID"))
+        elif (
+            company
+            and role
+            and normalize(row["company"]) == normalize(company)
+            and normalize(row["role"]) == normalize(role)
+        ):
+            matches.append((row, "same company and role"))
+    return matches
+
+
+def check_choice(value: str, allowed: tuple[str, ...], what: str) -> None:
+    if value not in allowed:
+        raise TrackerError(f"{what} must be one of: {', '.join(allowed)}. Got '{value}'.")
+
+
+def add(
+    path: Path,
+    values: Mapping[str, str],
+    *,
+    today: date | None = None,
+    allow_duplicate: bool = False,
+) -> Row:
+    """Add a job. Refuses a duplicate unless told otherwise."""
+    row: Row = {field: values.get(field, "") for field in FIELDS}
+    for required in ("job_id", "company", "role"):
+        if not row[required].strip():
+            raise TrackerError(f"{required} is required.")
+    row["status"] = row["status"] or "to_review"
+    row["letter_status"] = row["letter_status"] or "none"
+    check_choice(row["status"], STATUSES, "status")
+    check_choice(row["letter_status"], LETTER_STATUSES, "letter_status")
+    if row["score"] and not row["score"].lstrip("-").isdigit():
+        raise TrackerError(f"score must be a whole number. Got '{row['score']}'.")
+
+    rows = load(path)
+    duplicates = find(rows, row["job_id"], row["company"], row["role"])
+    if duplicates and not allow_duplicate:
+        existing, reason = duplicates[0]
+        raise DuplicateError(f"Already in the tracker as {existing['job_id']} ({reason}).")
+
+    stamp = (today or date.today()).isoformat()
+    row["found"] = row["found"] or stamp
+    row["updated"] = stamp
+    save(path, [*rows, row])
+    return row
+
+
+def folder_for(applications_dir: Path, status: str, row: Row) -> Path:
+    """`<applications>/<status>/<YYYY-MM>/<company>`: where the job's files live."""
+    month = row["found"][:7]
+    return applications_dir / status.replace("_", "-") / month / slugify(row["company"])
+
+
+def move_folder(applications_dir: Path, row: Row, new_status: str) -> str:
+    """Move the job's folder to its new status folder. Never overwrites, never deletes."""
+    destination = folder_for(applications_dir, new_status, row)
+    sources = [
+        folder_for(applications_dir, status, row)
+        for status in STATUSES
+        if folder_for(applications_dir, status, row) != destination
+    ]
+    source = next((candidate for candidate in sources if candidate.is_dir()), None)
+    if source is None:
+        return "no folder found, nothing moved"
+    if destination.exists():
+        return f"{destination} already exists, nothing moved"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    source.rename(destination)
+    with (applications_dir / MANIFEST).open("a") as manifest:
+        manifest.write(f"{source}\t{destination}\tmoved\n")
+    old, new = (path.relative_to(applications_dir) for path in (source, destination))
+    return f"moved {old} to {new}"
+
+
+def set_status(
+    path: Path,
+    job_id: str,
+    status: str,
+    *,
+    note: str = "",
+    applications_dir: Path | None = None,
+    today: date | None = None,
+) -> tuple[Row, str]:
+    """Change a job's status. Returns the row and a line about the folder move, if any."""
+    check_choice(status, STATUSES, "status")
+    rows = load(path)
+    matches = [row for row, _ in find(rows, job_id=job_id)]
+    if not matches:
+        raise TrackerError(f"No job with ID {job_id} in the tracker.")
+    row = matches[0]
+    if row["status"] in LOCKED_STATUSES and status in UNLOCKING_STATUSES:
+        raise TrackerError(
+            f"{row['job_id']} is {row['status']}; it is never moved back to {status}."
+        )
+    row["status"] = status
+    row["updated"] = (today or date.today()).isoformat()
+    if note:
+        row["notes"] = f"{row['notes']}; {note}" if row["notes"] else note
+    save(path, rows)
+    moved = move_folder(applications_dir, row, status) if applications_dir else ""
+    return row, moved
+
+
+def counts(rows: Iterable[Row]) -> dict[str, dict[str, int]]:
+    """How many jobs per status, per route and per route and status, for the summary."""
+    listed = list(rows)
+    return {
+        "status": dict(Counter(row["status"] for row in listed)),
+        "route": dict(Counter(row["route"] or "(none)" for row in listed)),
+    }
+
+
+def missing_fields(rows: Iterable[Row]) -> list[tuple[str, list[str]]]:
+    """Jobs with an empty route, CV or link, for the summary's 'to fix' list."""
+    problems = [(row["job_id"], [f for f in EXPECTED_FIELDS if not row[f]]) for row in rows]
+    return [(job_id, fields) for job_id, fields in problems if fields]

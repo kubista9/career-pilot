@@ -34,7 +34,7 @@ For each board with `tracker_urls` in the profile, open the pages in the user's 
 
 ## 3. Folders
 
-If `tracker.status_folders` is true, a status change moves the job's folder to the folder of the new status, using `career-pilot tracker status --move`. It never overwrites and writes every move to `MOVE-MANIFEST.tsv`.
+If `tracker.status_folders` is true, `career-pilot tracker status` moves the job's folder to the folder of the new status by itself. It never overwrites and writes every move to `MOVE-MANIFEST.tsv`.
 
 ## 4. Report
 
