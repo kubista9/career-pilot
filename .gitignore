@@ -1,0 +1,80 @@
+# --- Python / tooling -------------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# --- Editors, OS, local agent settings --------------------------------------
+.DS_Store
+.idea/
+.vscode/
+.claude/settings.local.json
+CLAUDE.local.md
+.mcp.json
+
+# --- PRIVATE DATA: must never be committed ---------------------------------
+# Your real data lives in the data dir outside the repo (CAREER_PILOT_DATA_DIR,
+# default ~/career-pilot-data): profile, CV, personal modes, tracker, letters.
+# These rules are a second line of defence for files copied in by mistake.
+# Keep this list in sync with PRIVATE_PATTERNS in src/career_pilot/privacy.py.
+
+# Secrets and tokens
+.env
+.env.*
+!.env.example
+*.token
+*.key
+secrets/
+
+# Your profile, CV and personal rules (the committed versions are *.example.* and *.template.md)
+profile.yml
+cv.md
+facts.md
+never-claim*
+_profile.md
+_custom.md
+*.pdf
+*.docx
+
+# Private folders
+private/
+career-pilot-data/
+/data/
+applications/
+runs/
+logs/
+*.log
+
+# Browser state (sessions, cookies, network captures)
+browser-profile/
+playwright-profile/
+*.cookies
+cookies.json
+storage-state.json
+*.har
+
+# Local state database
+*.sqlite
+*.sqlite3
+*.db
+
+# Backups and temp copies (they can hold the same private data as the original)
+*.bak*
+*.tmp*
+
+# Run output and application files, in case they are ever copied into the repo
+output/
+jds/
+job-description-*.txt
+cover-letter*.txt
+application-notes.txt
+applications.csv
+index.csv
+MOVE-MANIFEST.tsv
