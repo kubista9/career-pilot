@@ -23,7 +23,7 @@ An unclear email changes nothing. List it in the summary as a proposal. An email
 
 ## 2. Board trackers
 
-For each board with `tracker_urls` in the profile, open the pages in the user's already logged-in browser. Never log in.
+For each board with `tracker_urls` in the profile (keys `applied`, `interviews`, `clicked_apply`, `drafts`), open the pages in the user's already logged-in browser. Never log in.
 
 | Page | Action |
 |---|---|

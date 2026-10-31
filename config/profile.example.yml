@@ -1,0 +1,169 @@
+# Career Pilot profile: EXAMPLE with a fake person.
+#
+# Copy this file to <data dir>/config/profile.yml (default data dir: ~/career-pilot-data)
+# and replace every value with your own. The real file is never committed.
+# Run `career-pilot doctor` to see what is still missing or still an example value.
+#
+# The prompts in modes/ never contain values. They name keys in this file
+# (for example answers.start_date) and read them at run time.
+
+schema_version: 1
+
+# --- Who you are (used to fill forms) ------------------------------------------------------------
+candidate:
+  full_name: Alex Example
+  email: alex@example.com
+  phone: "+00 0 0000 0000"
+  address: "1 Example Street, 0000 AA Exampletown"
+  city: Exampletown
+  country: Exampleland
+  links:
+    linkedin: https://www.linkedin.com/in/alex-example
+    github: https://github.com/alex-example
+    website: https://alex.example.com
+  languages:                       # state levels honestly; the agent never claims a higher one
+    - { name: English, level: fluent }
+    - { name: Exampleish, level: A2 }
+
+# --- Files the agent reads (paths stay private) ---------------------------------------------------
+sources:
+  facts: ~/career-pilot-data/facts.md             # facts about you: the source of truth
+  letter_rules: ~/career-pilot-data/cover-letter-rules.md
+  cv_dir: ~/career-pilot-data/cv
+
+cvs:                               # one entry per CV file; the agent picks by focus
+  - { file: Alex-Example-CV-Software.pdf, focus: software, language: en }
+  - { file: Alex-Example-CV-Data.pdf, focus: data, language: en }
+
+# --- Standard answers for application forms --------------------------------------------------------
+answers:
+  hours_per_week: 16
+  start_date: "2027-01-04"
+  salary: "30 EUR per hour"
+  work_permit: "Authorised to work in Exampleland, no sponsorship needed"
+  driving_licence: "No"
+  other:                           # any extra form fields you are often asked for
+    gender: "prefer not to say"
+
+# --- Where to look ---------------------------------------------------------------------------------
+boards:
+  - name: LinkedIn
+    search_url: "https://www.linkedin.com/jobs/search/?keywords={keywords}&location={location}&sortBy=DD"
+    easy_apply: true
+    tracker_urls:                  # pages that list what you applied for (you stay logged in)
+      applied: https://www.linkedin.com/jobs-tracker/?stage=applied
+      clicked_apply: https://www.linkedin.com/jobs-tracker/?stage=clicked_apply
+      drafts: https://www.linkedin.com/jobs-tracker/?stage=draft
+  - name: Indeed
+    search_url: "https://www.indeed.com/jobs?q={keywords}&l={location}&sort=date"
+    easy_apply: true
+    tracker_urls:
+      applied: https://myjobs.indeed.com/applied
+      interviews: https://myjobs.indeed.com/interviews
+  - name: Glassdoor
+    search_url: "https://www.glassdoor.com/Job/jobs.htm?sc.keyword={keywords}"
+    easy_apply: true
+
+search:
+  location: Exampleland
+  pages: 2                         # result pages to look through per search
+  groups:                          # optional per group: pages, location, locations (a list, one search each),
+                                   # boards (only these boards) and note (a hint such as "use the part-time filter")
+    - name: core
+      keywords: ["software developer", "backend developer", "full stack developer"]
+    - name: junior
+      keywords: ["junior software engineer", "graduate developer"]
+
+# --- Hard filters: a job that fails one is dropped and not stored ------------------------------------
+filters:
+  title_words: [senior, lead, principal, staff, architect]
+  max_required_years: 2
+  drop_closed: true
+
+# --- Scoring -------------------------------------------------------------------------------------------
+# The agent rates each criterion; `career-pilot score` adds them up and picks the route.
+scoring:
+  tracks:
+    default:
+      criteria:
+        skill:
+          max: 5
+          rubric: "5 = meets nearly every must-have with proof in the CV; 3 = meets the core stack but misses some must-haves; 1 = only adjacent skills; 0 = no real fit"
+        location:
+          max: 2
+          rubric: "2 = remote or within your commute limit; 1 = a longer commute you would accept; 0 = out of range"
+        language:
+          max: 1
+          rubric: "1 = the working language is one you have; 0 = it is not"
+        growth:
+          max: 1
+          rubric: "1 = you would learn something you want to learn, or work with mentors; 0 = no"
+      gates: {}                    # criterion: lowest allowed value, otherwise the job is dropped
+      min: { skill: 1 }            # criterion: lowest value that still lets a job reach the threshold
+      threshold: 6                 # total needed to count as a match (maximum 9)
+
+    # A special track is optional. Example: a thesis or graduation project, where the
+    # hours do not matter but the topic does. Uncomment and adapt.
+    # project:
+    #   criteria:
+    #     skill:    { max: 5, rubric: "Same scale as above" }
+    #     location: { max: 2, rubric: "2 = remote or near; 1 = a longer commute; 0 = far" }
+    #     language: { max: 1, rubric: "1 = the working language is one you have" }
+    #     growth:   { max: 1, rubric: "1 = supervised work in your field" }
+    #   threshold: 6
+
+# First rule whose conditions all hold wins. Conditions: track, apply_type, tags_any,
+# tags_none, meets_threshold (true/false), min_score. The last rule must have no `when`.
+routing:
+  - when: { apply_type: easy_apply }
+    route: easy_apply
+  - when: { meets_threshold: true }
+    route: strong
+  - route: low_score
+
+# Every route needs approval unless you switch auto_submit on for it.
+routes:
+  strong:
+    label: Strong match
+    priority: 1                    # lower number is prepared first when a daily cap bites
+    auto_submit: false
+  easy_apply:
+    label: Easy apply
+    priority: 2
+    auto_submit: false
+  low_score:
+    label: Low score
+    priority: 3
+    auto_submit: false
+
+daily_caps:
+  approval: 10                     # jobs prepared for your approval per day
+  auto_submit: 20                  # jobs submitted automatically per day
+
+# --- Letters ------------------------------------------------------------------------------------------
+letters:
+  max_chars: 2000
+  max_paragraphs: 4
+  banned_phrases: []               # add your own, on top of the built-in list
+  forbidden_claims: ["fluent Exampleish"]   # things you must never claim
+  allow_dashes: false
+
+# --- Tracking ----------------------------------------------------------------------------------------
+tracker:
+  file: tracker/applications.csv   # relative paths are inside the data dir
+  status_folders: false            # true: keep each job's folder under applications/<status>/<YYYY-MM>/
+  applications_dir: applications
+
+sync:
+  email_days: 7
+
+# --- Optional adapters (off by default; the CSV tracker works without them) -------------------------------
+adapters:
+  gmail: { enabled: false }
+  notion: { enabled: false }       # mirrors the tracker; the token comes from NOTION_TOKEN in .env
+
+# --- Privacy ---------------------------------------------------------------------------------------------
+# Words that must never appear in the repo (your name, street, employer ...). Checked on your
+# machine by `career-pilot privacy-check`. This section is never shown to the agent.
+privacy:
+  forbidden_terms: []

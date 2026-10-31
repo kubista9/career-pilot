@@ -1,0 +1,4 @@
+job_id,company,role,route,score,status,apply_type,cv,letter_status,found,updated,link,notes
+linkedin:0000000001,Example Software Ltd,Backend Developer (part-time),strong,8,to_review,company_site,Alex-Example-CV-Software.pdf,drafted,2026-11-02,2026-11-02,https://example.com/jobs/1,"Ready, 1. Posted 2 days ago"
+indeed:aaaaaaaa00000001,Sample Labs,Junior Data Engineer,easy_apply,6,applied,easy_apply,Alex-Example-CV-Data.pdf,not_needed,2026-11-02,2026-11-03,https://example.com/jobs/2,Submitted 2026-11-03
+glassdoor:0000000003,Placeholder Corp,Software Developer,low_score,4,rejected,company_site,Alex-Example-CV-Software.pdf,none,2026-10-20,2026-10-29,https://example.com/jobs/3,Email 2026-10-29: rejection
