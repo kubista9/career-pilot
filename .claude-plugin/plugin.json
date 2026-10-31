@@ -1,0 +1,10 @@
+{
+  "name": "career-pilot",
+  "version": "0.1.0",
+  "description": "Job-hunt assistant: search job boards, remove duplicates, score and route jobs, prepare applications and track them locally. Nothing is sent without approval unless you switch auto-submit on for a route.",
+  "author": { "name": "Jakub Kuka" },
+  "repository": "https://github.com/kubista9/career-pilot",
+  "license": "MIT",
+  "keywords": ["jobs", "job-search", "applications", "career"],
+  "skills": "./.claude/skills/"
+}
