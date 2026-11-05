@@ -92,7 +92,7 @@ def test_letter_check_uses_profile_limits(
 
     code, out = run(capsys, "letter-check", str(letter), "--max-chars", "50")
     assert code == EXIT_LETTER
-    assert "the limit is 50" in out
+    assert "the maximum is 50" in out
 
 
 def test_tracker_flow(data_dir: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -150,3 +150,56 @@ def test_tracker_moves_folders_when_status_folders_are_on(
     _, out = run(capsys, "tracker", "status", "b:2", "applied", "--no-move")
     assert "Folder" not in out
     assert (data_dir / "applications" / "to-review" / month / "beta").is_dir()
+
+
+def test_letter_check_reads_the_new_limits_and_patterns_from_the_profile(
+    data_dir: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    letters = {
+        "min_paragraphs": 3,
+        "min_paragraph_chars": 200,
+        "forbidden_patterns": [r"https?://"],
+    }
+    write_profile(data_dir, {**SAMPLE_PROFILE, "letters": letters})
+    letter = tmp_path / "letter.txt"
+    letter.write_text(
+        "Dear Team,\n\n"
+        + "I like building useful software for real people. " * 2
+        + "https://example.com"
+    )
+
+    code, out = run(capsys, "letter-check", str(letter))
+
+    assert code == EXIT_LETTER
+    assert "1 paragraphs, the minimum is 3" in out
+    assert "paragraph 1 is" in out
+    assert "forbidden pattern 'https?://'" in out
+
+
+def test_letter_check_reports_an_invalid_pattern(
+    data_dir: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write_profile(data_dir, {**SAMPLE_PROFILE, "letters": {"forbidden_patterns": ["("]}})
+    letter = tmp_path / "letter.txt"
+    letter.write_text("Dear Team,\n\nSome text that is long enough to count as a paragraph here.")
+
+    code, out = run(capsys, "letter-check", str(letter))
+
+    assert code == EXIT_PROFILE
+    assert "not valid" in out
+
+
+def test_letter_check_options_replace_the_profile_for_one_check(
+    data_dir: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write_profile(data_dir, {**SAMPLE_PROFILE, "letters": {"min_paragraphs": 3}})
+    letter = tmp_path / "letter.txt"
+    letter.write_text(
+        "Dear Team,\n\n" + "Short non-tech letters are fine with two paragraphs. " * 2
+    )
+
+    code, _ = run(capsys, "letter-check", str(letter))
+    assert code == EXIT_LETTER
+
+    code, out = run(capsys, "letter-check", str(letter), "--min-paragraphs", "1")
+    assert (code, out.startswith("Letter check: OK")) == (EXIT_OK, True)

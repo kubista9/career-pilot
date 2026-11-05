@@ -26,15 +26,43 @@ def test_a_clean_letter_passes() -> None:
     assert check_letter(letter()) == []
 
 
-def test_length_limit() -> None:
-    issues = check_letter(letter(), max_chars=100)
+def test_length_limits_measure_the_body_only() -> None:
+    body = "\n\n".join([PARAGRAPH] * 3)
 
-    assert issues == [f"{len(letter().strip())} characters, the limit is 100"]
+    assert check_letter(letter(), max_chars=len(body)) == []
+    assert check_letter(letter(), max_chars=100) == [
+        f"the body is {len(body)} characters, the maximum is 100"
+    ]
+    assert check_letter(letter(), min_chars=len(body) + 1) == [
+        f"the body is {len(body)} characters, the minimum is {len(body) + 1}"
+    ]
 
 
-def test_greeting_and_sign_off_do_not_count_as_paragraphs() -> None:
-    assert check_letter(letter(4)) == []
-    assert check_letter(letter(5)) == ["5 paragraphs, the limit is 4"]
+def test_greeting_reference_line_and_sign_off_do_not_count_as_paragraphs() -> None:
+    text = "3 November 2026\n\nJOB REFERENCE: BACKEND DEVELOPER (PART-TIME)\n\n" + letter(4)
+
+    assert check_letter(text) == []
+    assert check_letter(letter(5)) == ["5 paragraphs, the maximum is 4"]
+
+
+def test_paragraph_count_and_size_minimums() -> None:
+    assert check_letter(letter(2), min_paragraphs=3) == ["2 paragraphs, the minimum is 3"]
+    short = len(PARAGRAPH) + 1
+    assert check_letter(letter(2), min_paragraph_chars=short) == [
+        f"paragraph 1 is {len(PARAGRAPH)} characters, the minimum is {short}",
+        f"paragraph 2 is {len(PARAGRAPH)} characters, the minimum is {short}",
+    ]
+
+
+def test_forbidden_patterns_are_regular_expressions() -> None:
+    text = letter().replace("platform", "platform on .NET 8 and https://example.com/x")
+
+    issues = check_letter(text, forbidden_patterns=[r"\.NET \d", r"https?://"])
+
+    assert issues == [
+        "matches the forbidden pattern '\\.NET \\d'",
+        "matches the forbidden pattern 'https?://'",
+    ]
 
 
 def test_dashes_are_flagged_unless_allowed() -> None:

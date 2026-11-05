@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 from collections.abc import Sequence
 from pathlib import Path
+from typing import Any
 
 from career_pilot import __version__, tracker
 from career_pilot.brief import BRIEF_KEYS, render_brief
@@ -15,6 +17,7 @@ from career_pilot.doctor import run_doctor
 from career_pilot.letters import (
     DEFAULT_MAX_CHARS,
     DEFAULT_MAX_PARAGRAPHS,
+    body_paragraphs,
     check_letter,
 )
 from career_pilot.paths import (
@@ -156,24 +159,42 @@ def brief(mode: str) -> int:
     return EXIT_OK
 
 
-def letter_check(file: str, max_chars: int | None) -> int:
+LIMIT_OPTIONS = (
+    "min_chars",
+    "max_chars",
+    "min_paragraphs",
+    "max_paragraphs",
+    "min_paragraph_chars",
+)
+
+
+def letter_check(file: str, limits: dict[str, int]) -> int:
     text = sys.stdin.read() if file == "-" else Path(file).expanduser().read_text()
     try:
         profile = optional_profile(resolve_data_dir())
     except ProfileError as error:
         print(f"Letter check: PROBLEM - {error}")
         return EXIT_PROFILE
-    settings = lookup(profile, "letters", {}) or {}
-    issues = check_letter(
-        text,
-        max_chars=max_chars or int(settings.get("max_chars", DEFAULT_MAX_CHARS)),
-        max_paragraphs=int(settings.get("max_paragraphs", DEFAULT_MAX_PARAGRAPHS)),
-        banned_phrases=settings.get("banned_phrases") or [],
-        forbidden_claims=settings.get("forbidden_claims") or [],
-        allow_dashes=bool(settings.get("allow_dashes", False)),
-    )
+    settings: dict[str, Any] = {**(lookup(profile, "letters", {}) or {}), **limits}
+    try:
+        issues = check_letter(
+            text,
+            min_chars=int(settings.get("min_chars", 0)),
+            max_chars=int(settings.get("max_chars", DEFAULT_MAX_CHARS)),
+            min_paragraphs=int(settings.get("min_paragraphs", 0)),
+            max_paragraphs=int(settings.get("max_paragraphs", DEFAULT_MAX_PARAGRAPHS)),
+            min_paragraph_chars=int(settings.get("min_paragraph_chars", 0)),
+            banned_phrases=settings.get("banned_phrases") or [],
+            forbidden_claims=settings.get("forbidden_claims") or [],
+            forbidden_patterns=settings.get("forbidden_patterns") or [],
+            allow_dashes=bool(settings.get("allow_dashes", False)),
+        )
+    except re.error as error:
+        print(f"Letter check: PROBLEM - a forbidden pattern in the profile is not valid: {error}")
+        return EXIT_PROFILE
     if not issues:
-        print(f"Letter check: OK ({len(text.strip())} characters)")
+        length = len("\n\n".join(body_paragraphs(text)))
+        print(f"Letter check: OK (body of {length} characters)")
         return EXIT_OK
     print("Letter check: PROBLEM")
     for issue in issues:
@@ -323,7 +344,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     letter = commands.add_parser("letter-check", help="Check a cover letter against the rules.")
     letter.add_argument("file", help="Letter text file, or - for standard input.")
-    letter.add_argument("--max-chars", type=int)
+    for option in LIMIT_OPTIONS:
+        letter.add_argument(
+            f"--{option.replace('_', '-')}",
+            type=int,
+            dest=option,
+            help="Replaces the value from the profile for this check.",
+        )
 
     add_tracker_parser(commands)
     return parser
@@ -346,7 +373,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "brief":
         return brief(args.mode)
     if args.command == "letter-check":
-        return letter_check(args.file, args.max_chars)
+        limits = {o: getattr(args, o) for o in LIMIT_OPTIONS if getattr(args, o) is not None}
+        return letter_check(args.file, limits)
     if args.command == "tracker":
         return run_tracker(args)
     return EXIT_OK  # pragma: no cover - argparse rejects unknown commands
