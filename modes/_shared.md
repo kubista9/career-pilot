@@ -72,10 +72,20 @@ The tracker is a CSV file, `tracker/applications.csv` in DATA_DIR. Use `career-p
 
 ## Answers and letters
 
-- Fill forms with `answers` from the profile. A yes/no about a skill or certificate the user lacks is no. Years of experience with something the user does not have is 0. Follow-company boxes stay unchecked.
-- Write every letter following the `sources.letter_rules` file, from facts in the facts file and the chosen CV. Run `career-pilot letter-check` on the draft and fix every issue, then check each sentence against the facts. Save the letter in the job's folder.
-- Pick the CV whose `focus` fits the job best, in the listing's language when `cvs` has one.
+- Fill forms with `answers` from the profile. A yes/no about a skill or certificate the user lacks is no. Years of experience with something the user does not have is 0. Follow-company boxes stay unchecked. Ask only about fields the profile and the facts files do not already answer.
+- Write every letter following the `sources.letter_rules` file, from facts in the facts file and the chosen CV. Run `career-pilot letter-check` on the draft and fix every issue, then check each sentence against the facts. State the hours the listing asks for (a 20 hour listing gets 20 hours, never a lower range).
+- If `letters.plan_first` is true, write a plan first: one line per paragraph (which experience or block, which detail of the listing, the opener and the closer). Show it and write the full letter only after the user confirms it. In an unattended run draft the plan and the letter, and mark the letter "plan not confirmed".
+- **The user's editing copy is the source of truth.** Once the user edits a letter in an editor, or says they did, read that copy before every step that uses the letter and sync it into the job's single current `cover-letter.txt`. Never overwrite their edits and never reword their phrasing. Only flag typos, grammar problems, unclear references, placeholders and claims that do not match the facts files, and change them only when the user says so.
+- Keep ONE current file per job for the letter text, and one for any final letter file. A replaced file moves into a `_to_delete` subfolder of the job's folder: never deleted, never kept next to the new one, never with a version in its name. Tell the user it is there.
+- If a listing requires a language level above the one in the profile, do not skip it silently and do not hide it: ask the user once. If they apply, the letter states their true level.
+- If a job clearly does not fit (hours, level, field, a long assessment), say so plainly and recommend not applying. The user decides.
+- Pick the CV whose `focus` fits the job best, in the listing's language when `cvs` has one. Never accept a board's pre-selected or old CV: use the newest export of the chosen file and check the file name the form shows.
 - A recruiter or contact is only a name and a published address found on the listing, the company site or the board. Never guess an address. If there is none, write "none found".
+
+## Emails
+
+- An application or follow-up email is created as a draft by default. Send it only after the user approved that ID (or said "send" for a follow-up), one email at a time. End with the sign-off and the name, nothing after it.
+- For a follow-up find a real recruiting contact first: the employer's careers page or FAQ, the sender of the receipt, a named recruiter. Never guess an address. A general or media address is a last resort and only after asking the user. State the application date and the role.
 
 ## Summary format
 

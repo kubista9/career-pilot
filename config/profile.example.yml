@@ -142,10 +142,15 @@ daily_caps:
 
 # --- Letters ------------------------------------------------------------------------------------------
 letters:
+  plan_first: false                # true: write a one-line-per-paragraph plan and wait for your OK first
+  min_chars: 1200                  # the body only: paragraphs, without date, greeting and sign-off
   max_chars: 2000
+  min_paragraphs: 3
   max_paragraphs: 4
+  min_paragraph_chars: 250         # every paragraph at least this long
   banned_phrases: []               # add your own, on top of the built-in list
   forbidden_claims: ["fluent Exampleish"]   # things you must never claim
+  forbidden_patterns: ["https?://"]         # regular expressions, e.g. no raw URLs in a letter
   allow_dashes: false
 
 # --- Tracking ----------------------------------------------------------------------------------------

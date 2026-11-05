@@ -59,6 +59,10 @@ Start Claude Code inside this repository and type:
 
 The run ends with a summary. Reply by ID in the same chat: `/career-pilot review` handles edits and approvals. Nothing is sent until a route has `auto_submit: true` or you approve that ID. To update statuses only, use `/career-pilot sync`.
 
+## Try it safely first
+
+`/career-pilot run dry` searches, scores and routes jobs and shows what a real run would do. It writes nothing and sends nothing. `/career-pilot sync dry` does the same for status updates.
+
 ## Updating
 
 `git pull`. Your files in the data dir are never touched. If a new version adds profile keys, `career-pilot doctor` tells you.

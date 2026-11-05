@@ -4,6 +4,10 @@ The daily hunt. You work through seven steps without asking the user anything. M
 
 Apply `_shared.md` throughout, especially the safety rules.
 
+## Dry run
+
+If the user asked for `run dry`, do steps 1 to 4, write the summary of step 7, and stop. Search, filter, score and route as normal, but write nothing: no tracker rows, no folders, no job description or letter files, no drafts, no forms, no adapter updates, no saved jobs on a board. For step 2 do a `sync dry`. For each job report its ID, title, company, route, the score with the ratings and why, and what a normal run would have done next (prepare, submit automatically, wait for approval). Use it to test a new profile and its scoring. Steps 5 and 6 are skipped.
+
 ## 1. Load
 
 1. Run `career-pilot doctor`. It lists missing or unfilled profile keys and unreadable source files. Stop if a required key is missing. Flag everything else.
@@ -46,8 +50,8 @@ For every job that will be applied to or kept ready:
 1. Create the job's folder in `tracker.applications_dir` and write the job description file: first line "<Company> - <Role>", then the listing link, then the facts from the listing (location, hours, compensation, about, responsibilities, requirements, how to apply). Plain text, facts only.
 2. Choose the CV by `focus`.
 3. Look for the contact (see `_shared.md`).
-4. Draft a cover letter only if the route needs approval, or the form requires one. An optional letter field stays empty unless `_custom.md` says otherwise. Follow `_shared.md`, "Answers and letters". Save it as `cover-letter.txt` in the job's folder.
-5. For email-only applications, also write the ready-to-send email (to, subject, body, attachments) into `application-notes.txt`. Do not send it.
+4. Draft a cover letter only if the route needs approval, or the form requires one. An optional letter field stays empty unless `_custom.md` says otherwise. Follow `_shared.md`, "Answers and letters" (including the plan first when `letters.plan_first` is true). Save it as `cover-letter.txt` in the job's folder.
+5. For email-only applications, also write the ready-to-send email (to, subject, body, attachments) into `application-notes.txt`, and create it as a draft if an email adapter is enabled. Do not send it.
 
 Write what you did in `application-notes.txt`: route, CV, contact, answers you will give, ID, and what is open.
 

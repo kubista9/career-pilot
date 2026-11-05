@@ -17,7 +17,7 @@ Run `career-pilot doctor` to check yours.
 | `routing` | Ordered rules that turn a score into a route | `career-pilot score` |
 | `routes` | Per route: label, priority, `auto_submit` | Steps 5 and 6 |
 | `daily_caps` | Most jobs prepared for approval and auto-submitted per day | Step 4 |
-| `letters` | Length, paragraphs, banned phrases, forbidden claims, dashes | `career-pilot letter-check` |
+| `letters` | Body length and paragraph limits (minimum and maximum), banned phrases, forbidden claims, forbidden patterns, dashes, and `plan_first` | `career-pilot letter-check`, run and review |
 | `tracker` | Where the CSV and the application folders are; status folders on or off | `career-pilot tracker` |
 | `sync` | How many days of email to read | Sync |
 | `adapters` | Optional Gmail and Notion adapters, off by default | Sync, tracker mirror |

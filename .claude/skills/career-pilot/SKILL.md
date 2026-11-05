@@ -1,7 +1,7 @@
 ---
 name: career-pilot
 description: Run the user's job hunt. Searches job boards, removes duplicates, scores and routes each job, prepares applications and tracks them locally. Modes - run (the daily hunt), sync (update statuses from email and board trackers), review (act on the user's replies to the summary). Only start when the user asks for it.
-argument-hint: run | sync | review
+argument-hint: run [dry] | sync [dry] | review
 disable-model-invocation: true
 ---
 
@@ -25,6 +25,8 @@ If DATA_DIR or `config/profile.yml` does not exist, stop and tell the user to fo
 | `review` | `modes/review.md` | The user answers the summary: edits, approvals, feedback |
 
 With no argument, or an unclear one, ask which mode the user wants.
+
+Add `dry` to `run` or `sync` (for example `run dry`) to see what would happen without writing, preparing or sending anything. Use it to test a new profile.
 
 ## Load context
 

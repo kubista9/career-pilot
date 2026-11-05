@@ -2,6 +2,8 @@
 
 Bring the tracker up to date with what really happened: replies in email, and the "applied" pages of the job boards. Read-only everywhere except the tracker and the application folders. Apply `_shared.md`.
 
+If the user asked for `sync dry`, do all the reading and matching but change nothing: list each change you would make, and why.
+
 If a job is missing from the tracker, add it first (`career-pilot tracker add`) with the fields visible on the page, and the note "added from <source>". Match existing rows by job ID, then by company and role.
 
 ## 1. Email (read only)
@@ -36,6 +38,14 @@ For each board with `tracker_urls` in the profile (keys `applied`, `interviews`,
 
 If `tracker.status_folders` is true, `career-pilot tracker status` moves the job's folder to the folder of the new status by itself. It never overwrites and writes every move to `MOVE-MANIFEST.tsv`.
 
-## 4. Report
+## 4. Reconcile per company
+
+For each company, compare the tracker and the folders with the email receipts and rejections and the board's applied page. Report applied, not applied and rejected per company. Move a folder to `applied` only for a confirmed submission (a receipt in email or on the board) or the user's word. Ask before any broad move.
+
+## 5. Follow-up emails (only when asked)
+
+Follow `_shared.md`, "Emails": find a real recruiting contact first, never guess an address, create a draft and send only after the user says "send".
+
+## 6. Report
 
 List what you changed automatically, what you only propose, and anything you could not check. Rows that are `rejected`, `interview` or `offer` are never reverted by a board tracker.

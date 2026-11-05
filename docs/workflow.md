@@ -32,7 +32,9 @@ flowchart TD
     log[7 Log and summarise<br/>tracker and chat summary] --> reply{You reply by ID<br/>review mode}
     reply -- edit --> edit[Change the letter,<br/>show it, wait for your OK]
     edit --> reply
-    reply -- ok --> approved[Submit that ID only]
+    reply -- letter ok --> final[Build the final letter file<br/>nothing is sent]
+    final --> reply
+    reply -- send ok --> approved[Send that ID only]
     reply -- nothing more --> done([Done])
     approved --> done
 ```
@@ -56,4 +58,8 @@ flowchart TD
 - **Special track**: an optional second scoring track (for example a thesis project) with its own criteria.
 - **Approval gate**: a route without `auto_submit` never submits. The page waits for you.
 - **Daily cap**: past `daily_caps`, jobs are tracked but not prepared.
-- **Review loop**: an edit is never an approval. Only an explicit OK for an ID sends it.
+- **Review loop**: an edit is never an approval, and a letter OK is not a send OK. Only an explicit send OK for an ID sends it.
+
+## Reviewing a letter next to the application page
+
+The skill cannot arrange windows or split the browser view (see [issue 1](https://github.com/kubista9/career-pilot/issues/1)). A manual way that works today in a recent Chrome: open the letter and the application page as two tabs in the same tab group, right-click one tab and add it to a split view. That shows both in one window.
