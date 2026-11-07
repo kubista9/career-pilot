@@ -10,6 +10,8 @@ If a job is missing from the tracker, add it first (`career-pilot tracker add`) 
 
 Only if the `gmail` adapter in the profile is enabled and available. Search the last `sync.email_days` days (default 7) with general terms (application, interview, unfortunately, offer) plus the user's own words from `_custom.md`.
 
+A keyword search is only the first pass: it misses mail that uses other words (a booked call, a bounce, a rejection in another language). Also list all recent mail without promotions and newsletters, pick every message from or about a company in the tracker or from a recruiting system (applicant tracking systems, calendar invites, delivery failures), and read the full body of each. Never decide from a subject or snippet alone.
+
 Never send, reply, draft, label, archive, delete or forward.
 
 Update only clear cases and add "Email <date>: <reason>" to the notes:
@@ -42,9 +44,25 @@ If `tracker.status_folders` is true, `career-pilot tracker status` moves the job
 
 For each company, compare the tracker and the folders with the email receipts and rejections and the board's applied page. Report applied, not applied and rejected per company. Move a folder to `applied` only for a confirmed submission (a receipt in email or on the board) or the user's word. Ask before any broad move.
 
-## 5. Follow-up emails (only when asked)
+## 5. Follow-up emails
 
-Follow `_shared.md`, "Emails": find a real recruiting contact first, never guess an address, create a draft and send only after the user says "send".
+Run `career-pilot tracker followups`. It lists two groups:
+
+- **Rejected, no follow-up yet.** The company said no. This is due at once: draft it in the same sync that found the rejection, do not wait. Draft a very short email that thanks them, names the role and the application date, and asks why the application was not chosen and what could be improved. Only recent rejections are listed (`followup.rejected_within_days`).
+- **Applied, gone quiet.** The status is `applied` and nothing has happened for `followup.stale_days` days (default 5). Draft a short email that names the role and the application date and asks kindly for the status. Ask at most twice per application: look for "Follow-up email" in the notes.
+
+Do this after steps 1 to 4, so a reply that just arrived has already updated the tracker and the job no longer counts as stale. In `sync dry` only list the jobs. Jobs on a route in `followup.skip_routes` are left out by the command.
+
+Keep it reasonable. If the rejection already gives a clear reason (availability, hours, a language or experience requirement), a request for feedback adds nothing: do not draft it, and list the reason in the summary.
+
+For each job:
+
+1. Find a real recruiting contact first (`_shared.md`, "Emails"). Never guess an address. A no-reply address, or one that bounced, is not a contact: say "no contact found" and move on.
+2. Write the email in the user's voice following `sources.letter_rules` and `_custom.md`: under 80 words, plain, no links, no excuses and no pushing. Skip a rejection that already explains the reason in detail only if the user's `_custom.md` says so.
+3. Create a draft. Send nothing. The user sends it, or says "send" for that job.
+4. After the email is really sent, run `career-pilot tracker followup <job_id> --note "<what was asked>"`. A draft alone does not count, so the job stays on the list until it is sent.
+
+List the drafts in the summary: job, contact, which group, and the first line.
 
 ## 6. Report
 

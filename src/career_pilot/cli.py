@@ -49,6 +49,7 @@ EXIT_DATA_DIR = 2
 EXIT_PROFILE = 3
 EXIT_TRACKER = 4
 EXIT_LETTER = 5
+DEFAULT_STALE_DAYS = 5
 
 
 def find_repo_root(start: Path) -> Path:
@@ -219,6 +220,13 @@ def run_tracker(args: argparse.Namespace) -> int:
     try:
         profile = optional_profile(data_dir)
         csv_path, applications_dir = tracker_paths(profile, data_dir)
+        if getattr(args, "days", 0) is None:
+            args.days = int(lookup(profile, "followup.stale_days", DEFAULT_STALE_DAYS))
+            if not args.skip_route:
+                args.skip_route = list(lookup(profile, "followup.skip_routes", []) or [])
+            if args.rejected_within is None:
+                configured = lookup(profile, "followup.rejected_within_days", None)
+                args.rejected_within = None if configured is None else int(configured)
         return tracker_command(args, csv_path, applications_dir)
     except (ProfileError, tracker.TrackerError) as error:
         print(f"Tracker: PROBLEM - {error}")
@@ -260,6 +268,30 @@ def tracker_command(args: argparse.Namespace, csv_path: Path, applications_dir: 
                     f"{row['job_id']}\t{row['status']}\t{row['route']}\t{row['score']}\t"
                     f"{row['company']}\t{row['role']}"
                 )
+    elif args.tracker_command == "followups":
+        due = tracker.followups_due(
+            tracker.load(csv_path),
+            args.days,
+            skip_routes=args.skip_route or (),
+            rejected_within_days=args.rejected_within,
+        )
+        if args.json:
+            print(json.dumps(due))
+        else:
+            titles = {
+                "rejected": "Rejected, no follow-up yet (ask for feedback)",
+                "stale": f"Applied, nothing for {args.days}+ days (ask for the status)",
+            }
+            for group, rows in due.items():
+                print(f"{titles[group]}: {len(rows)}")
+                for row in rows:
+                    print(
+                        f"  {row['job_id']}\t{row['company']}\t{row['role']}\t"
+                        f"last activity {tracker.last_activity(row) or 'unknown'}"
+                    )
+    elif args.tracker_command == "followup":
+        row = tracker.mark_followup(csv_path, args.job_id, note=args.note or "")
+        print(f"{row['job_id']}: follow-up recorded for {row['followup']}")
     elif args.tracker_command == "counts":
         print(json.dumps(tracker.counts(tracker.load(csv_path))))
     elif args.tracker_command == "check":
@@ -280,7 +312,7 @@ def add_tracker_parser(commands: argparse._SubParsersAction[argparse.ArgumentPar
 
     add = sub.add_parser("add", help="Add a job. Refuses duplicates.")
     for field in tracker.FIELDS:
-        if field not in ("found", "updated"):
+        if field not in ("found", "updated", "followup"):
             add.add_argument(f"--{field.replace('_', '-')}", dest=field, default="")
 
     find = sub.add_parser("find", help="Is this job already in the tracker?")
@@ -299,6 +331,30 @@ def add_tracker_parser(commands: argparse._SubParsersAction[argparse.ArgumentPar
     listing = sub.add_parser("list", help="List jobs, one per line.")
     listing.add_argument("--status", choices=tracker.STATUSES)
     listing.add_argument("--route")
+
+    followups = sub.add_parser(
+        "followups", help="Rejected jobs without a follow-up, and applied jobs gone quiet."
+    )
+    followups.add_argument(
+        "--days",
+        type=int,
+        help="Days of silence that make a job stale (default: followup.stale_days, else 5).",
+    )
+    followups.add_argument(
+        "--skip-route",
+        action="append",
+        help="A route that never gets a follow-up (default: followup.skip_routes). Repeatable.",
+    )
+    followups.add_argument(
+        "--rejected-within",
+        type=int,
+        help="Only rejections this many days old (default: followup.rejected_within_days).",
+    )
+    followups.add_argument("--json", action="store_true")
+
+    followup = sub.add_parser("followup", help="Record that a follow-up email was sent.")
+    followup.add_argument("job_id")
+    followup.add_argument("--note")
 
     sub.add_parser("counts", help="Number of jobs per status and per route (JSON).")
     sub.add_parser("check", help="List jobs with an empty route, CV or link.")
