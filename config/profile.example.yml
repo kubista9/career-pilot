@@ -67,11 +67,18 @@ boards:
 search:
   location: Exampleland
   pages: 2                         # result pages to look through per search
-  groups:                          # optional per group: pages, location, locations (a list, one search each),
-                                   # boards (only these boards) and note (a hint such as "use the part-time filter")
+  next_stage_below: 5              # optional: run stage 2 only if stage 1 gave fewer than 5 usable jobs
+  groups:                          # optional per group: stage (1 by default), pages, location, locations (a list,
+                                   # one search each), radius_km, max_age_days, boards (only these boards) and
+                                   # note (a hint such as "use the part-time filter"). A keyword may hold phrases
+                                   # joined with OR: it then runs as one search.
     - name: core
-      keywords: ["software developer", "backend developer", "full stack developer"]
-    - name: junior
+      stage: 1
+      radius_km: 50
+      max_age_days: 14
+      keywords: ["software developer OR backend developer OR full stack developer"]
+    - name: junior-local-language
+      stage: 2                     # searched only when stage 1 runs dry
       keywords: ["junior software engineer", "graduate developer"]
 
 # --- Hard filters: a job that fails one is dropped and not stored ------------------------------------
@@ -161,6 +168,16 @@ tracker:
 
 sync:
   email_days: 7
+
+# --- Follow-up emails (optional) ---------------------------------------------------------------------------
+# `career-pilot tracker followups` lists rejected jobs that got no follow-up yet, and applied jobs with no
+# news for `stale_days` days. The agent drafts a short email for each; it never sends one without your OK.
+# A rejection is followed up at once (only if it is at most `rejected_within_days` old). A route in
+# `skip_routes` never gets a follow-up, for example easy apply, which has no contact address.
+followup:
+  stale_days: 5
+  rejected_within_days: 14
+  skip_routes: []
 
 # --- Optional adapters (off by default; the CSV tracker works without them) -------------------------------
 adapters:
