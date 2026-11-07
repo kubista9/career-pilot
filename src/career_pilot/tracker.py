@@ -27,6 +27,7 @@ FIELDS: tuple[str, ...] = (
     "letter_status",
     "found",
     "updated",
+    "followup",
     "link",
     "notes",
 )
@@ -212,6 +213,72 @@ def counts(rows: Iterable[Row]) -> dict[str, dict[str, int]]:
         "status": dict(Counter(row["status"] for row in listed)),
         "route": dict(Counter(row["route"] or "(none)" for row in listed)),
     }
+
+
+def parse_day(text: str) -> date | None:
+    """An ISO date from a tracker field, or None if it is empty or not a date."""
+    try:
+        return date.fromisoformat(text[:10])
+    except ValueError:
+        return None
+
+
+def last_activity(row: Row) -> date | None:
+    """The later of the last update and the last follow-up email."""
+    days = [day for day in (parse_day(row["updated"]), parse_day(row["followup"])) if day]
+    return max(days) if days else None
+
+
+def followups_due(
+    rows: Iterable[Row],
+    stale_days: int,
+    today: date | None = None,
+    *,
+    skip_routes: Iterable[str] = (),
+    rejected_within_days: int | None = None,
+) -> dict[str, list[Row]]:
+    """Jobs that call for a follow-up email.
+
+    `rejected`: rejected and no follow-up sent yet (ask why, and what to improve). This is due
+    at once, as soon as the rejection is in the tracker. With `rejected_within_days` an old
+    rejection is left out, because asking weeks later is no use.
+    `stale`: applied and nothing has happened for `stale_days` days (ask for the status).
+    Jobs on a route in `skip_routes` (for example easy apply, which has no contact) never count.
+    A follow-up email resets the clock, so a job is never asked twice in a row.
+    """
+    now = today or date.today()
+    skipped = set(skip_routes)
+    rejected: list[Row] = []
+    stale: list[Row] = []
+    for row in rows:
+        if row["route"] in skipped:
+            continue
+        last = last_activity(row)
+        if row["status"] == "rejected" and not row["followup"]:
+            recent = rejected_within_days is None or (
+                last is not None and (now - last).days <= rejected_within_days
+            )
+            if recent:
+                rejected.append(row)
+        elif row["status"] == "applied" and last is not None and (now - last).days >= stale_days:
+            stale.append(row)
+    return {"rejected": rejected, "stale": stale}
+
+
+def mark_followup(path: Path, job_id: str, *, note: str = "", today: date | None = None) -> Row:
+    """Record that a follow-up email was sent for a job (not merely drafted)."""
+    rows = load(path)
+    matches = [row for row, _ in find(rows, job_id=job_id)]
+    if not matches:
+        raise TrackerError(f"No job with ID {job_id} in the tracker.")
+    row = matches[0]
+    stamp = (today or date.today()).isoformat()
+    row["followup"] = stamp
+    row["updated"] = stamp
+    entry = f"Follow-up email {stamp}" + (f": {note}" if note else "")
+    row["notes"] = f"{row['notes']}; {entry}" if row["notes"] else entry
+    save(path, rows)
+    return row
 
 
 def missing_fields(rows: Iterable[Row]) -> list[tuple[str, list[str]]]:

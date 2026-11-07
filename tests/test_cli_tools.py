@@ -203,3 +203,23 @@ def test_letter_check_options_replace_the_profile_for_one_check(
 
     code, out = run(capsys, "letter-check", str(letter), "--min-paragraphs", "1")
     assert (code, out.startswith("Letter check: OK")) == (EXIT_OK, True)
+
+
+def test_followups_command_and_followup_record(
+    data_dir: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    run(capsys, "tracker", "add", "--job-id", "b:1", "--company", "Acme", "--role", "Dev")
+    run(capsys, "tracker", "add", "--job-id", "b:2", "--company", "Beta", "--role", "Dev")
+    run(capsys, "tracker", "status", "b:2", "rejected", "--no-move")
+
+    code, out = run(capsys, "tracker", "followups", "--days", "0", "--json")
+    assert code == EXIT_OK
+    assert [row["job_id"] for row in json.loads(out)["rejected"]] == ["b:2"]
+
+    code, out = run(capsys, "tracker", "followup", "b:2", "--note", "asked for feedback")
+    assert code == EXIT_OK
+    assert "follow-up recorded" in out
+
+    _, out = run(capsys, "tracker", "followups")
+    assert "Rejected, no follow-up yet (ask for feedback): 0" in out
+    assert "nothing for 5+ days" in out

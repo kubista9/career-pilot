@@ -6,8 +6,8 @@ shows the same flow at a glance. If the two ever disagree, the prompts are right
 ```mermaid
 flowchart TD
     start([career-pilot run]) --> load[1 Load<br/>profile and sources]
-    load --> sync[2 Sync<br/>email and board trackers]
-    sync --> search[3 Search<br/>every board, every group]
+    load --> sync[2 Sync<br/>email, board trackers,<br/>follow-up email drafts]
+    sync --> search[3 Search stage 1<br/>one subagent per board]
     search --> filter{4 Dropped by a hard filter<br/>or already tracked?}
     filter -- yes --> skipped[Skipped, not stored]
     filter -- no --> track{Special track?}
@@ -17,7 +17,10 @@ flowchart TD
     rateSpecial --> score
     score --> gate{Below a gate?}
     gate -- yes --> skipped
-    gate -- no --> cap{Daily cap reached?}
+    gate -- no --> enough{Enough usable jobs?<br/>next_stage_below}
+    enough -- no, another stage left --> search2[3 Search next stage<br/>for example the other language]
+    search2 --> filter
+    enough -- yes, or no stage left --> cap{Daily cap reached?}
     cap -- yes --> overCap[Tracked as to_review<br/>over daily cap]
     cap -- no --> prepare[5 Prepare<br/>folder, CV, letter if needed]
     prepare --> auto{6 Does the route<br/>have auto_submit on?}
@@ -44,16 +47,18 @@ flowchart TD
 | Step | What happens | Mode file |
 |---|---|---|
 | 1 Load | Check the profile and the files it points to | [run](../modes/run.md) |
-| 2 Sync | Update statuses from email and the boards' own "applied" pages | [sync](../modes/sync.md) |
-| 3 Search | Run the search plan on every board | [run](../modes/run.md) |
+| 2 Sync | Update statuses from email and the boards' own "applied" pages, then draft follow-up emails (a rejection at once, a quiet application after a few days) | [sync](../modes/sync.md) |
+| 3 Search | Run the search plan, one subagent per board. Stage 1 first, later stages only if the first ran dry | [run](../modes/run.md) |
 | 4 Filter and score | Drop, deduplicate, rate, score, route | [run](../modes/run.md) |
 | 5 Prepare | Job folder, CV choice, contact, letter if needed | [run](../modes/run.md) |
 | 6 Apply | Submit only where the route allows it. Everything else waits | [run](../modes/run.md) |
 | 7 Log and summarise | Tracker, summary, the question for you | [run](../modes/run.md) |
 | after the summary | Edits, approvals, feedback | [review](../modes/review.md) |
 
-## Five things the diagram makes visible
+## Seven things the diagram makes visible
 
+- **Stages**: search groups run in stages (for example English first, the local language second). A later stage runs only when the earlier one gave fewer usable jobs than `search.next_stage_below`.
+- **Follow-ups**: step 2 also drafts follow-up emails. Nothing is sent without your OK.
 - **Hard-filter exit**: a job that fails a filter or a gate is dropped and not stored.
 - **Special track**: an optional second scoring track (for example a thesis project) with its own criteria.
 - **Approval gate**: a route without `auto_submit` never submits. The page waits for you.

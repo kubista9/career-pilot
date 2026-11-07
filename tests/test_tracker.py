@@ -188,3 +188,63 @@ def test_not_relevant_rows_are_logged_and_counted_apart(csv_path: Path) -> None:
     assert tracker.counts(tracker.load(csv_path))["status"] == {"not_relevant": 1, "to_review": 1}
     row, _ = tracker.set_status(csv_path, "b:1", "to_review", note="Reconsidered")
     assert row["status"] == "to_review"
+
+
+def test_old_csv_without_followup_column_still_loads(csv_path: Path) -> None:
+    csv_path.parent.mkdir(parents=True)
+    csv_path.write_text("job_id,company,role,status\nb:1,Acme,Dev,applied\n")
+
+    [row] = tracker.load(csv_path)
+
+    assert row["followup"] == ""
+    assert row["status"] == "applied"
+
+
+def test_followups_due_lists_rejected_and_stale_jobs(csv_path: Path) -> None:
+    add(csv_path, "b:1", "Quiet", status="applied")
+    add(csv_path, "b:2", "Fresh", status="applied")
+    add(csv_path, "b:3", "No", status="rejected")
+    add(csv_path, "b:4", "Waiting", status="to_review")
+    rows = tracker.load(csv_path)
+    rows[1]["updated"] = "2026-11-06"
+
+    due = tracker.followups_due(rows, 5, today=date(2026, 11, 7))
+
+    assert [row["job_id"] for row in due["stale"]] == ["b:1"]
+    assert [row["job_id"] for row in due["rejected"]] == ["b:3"]
+
+
+def test_followup_resets_the_clock_and_ends_the_rejection_reminder(csv_path: Path) -> None:
+    add(csv_path, "b:1", "Quiet", status="applied")
+    add(csv_path, "b:2", "No", status="rejected")
+
+    tracker.mark_followup(csv_path, "b:1", note="status request", today=date(2026, 11, 7))
+    tracker.mark_followup(csv_path, "b:2", today=date(2026, 11, 7))
+    rows = tracker.load(csv_path)
+
+    assert rows[0]["followup"] == "2026-11-07"
+    assert "Follow-up email 2026-11-07: status request" in rows[0]["notes"]
+    assert tracker.followups_due(rows, 5, today=date(2026, 11, 9)) == {"rejected": [], "stale": []}
+    later = tracker.followups_due(rows, 5, today=date(2026, 11, 12))
+    assert [row["job_id"] for row in later["stale"]] == ["b:1"]
+
+
+def test_followup_for_unknown_job(csv_path: Path) -> None:
+    with pytest.raises(TrackerError):
+        tracker.mark_followup(csv_path, "b:404")
+
+
+def test_followups_skip_routes_and_old_rejections(csv_path: Path) -> None:
+    add(csv_path, "b:1", "Easy", status="applied", route="easy_apply")
+    add(csv_path, "b:2", "Direct", status="applied", route="strong")
+    add(csv_path, "b:3", "Fresh no", status="rejected", route="strong")
+    add(csv_path, "b:4", "Old no", status="rejected", route="strong")
+    rows = tracker.load(csv_path)
+    rows[3]["updated"] = "2026-09-01"
+
+    due = tracker.followups_due(
+        rows, 5, today=date(2026, 11, 7), skip_routes=["easy_apply"], rejected_within_days=14
+    )
+
+    assert [row["job_id"] for row in due["stale"]] == ["b:2"]
+    assert [row["job_id"] for row in due["rejected"]] == ["b:3"]
