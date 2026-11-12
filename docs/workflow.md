@@ -32,7 +32,7 @@ flowchart TD
     submit --> log
     blocked --> log
     overCap --> log
-    log[7 Log and summarise<br/>tracker and chat summary] --> reply{You reply by ID<br/>review mode}
+    log[7 Log and summarise<br/>tracker and chat summary<br/>with next steps per job] --> reply{You reply by ID<br/>review mode}
     reply -- edit --> edit[Change the letter,<br/>show it, wait for your OK]
     edit --> reply
     reply -- letter ok --> final[Build the final letter file<br/>nothing is sent]
@@ -52,7 +52,7 @@ flowchart TD
 | 4 Filter and score | Drop, deduplicate, rate, score, route | [run](../modes/run.md) |
 | 5 Prepare | Job folder, CV check (required, optional or not asked) and choice, contact, letter if needed | [run](../modes/run.md) |
 | 6 Apply | Submit only where the route allows it. Everything else waits | [run](../modes/run.md) |
-| 7 Log and summarise | Tracker, summary, the question for you | [run](../modes/run.md) |
+| 7 Log and summarise | Tracker, summary with next steps per job (channel, CV, what the letter or email would say, form answers, choices for you), the question for you | [run](../modes/run.md) |
 | after the summary | Edits, approvals, feedback | [review](../modes/review.md) |
 
 ## Seven things the diagram makes visible

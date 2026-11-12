@@ -6,7 +6,7 @@ Apply `_shared.md` throughout, especially the safety rules.
 
 ## Dry run
 
-If the user asked for `run dry`, do steps 1 to 4, write the summary of step 7, and stop. Search, filter, score and route as normal, but write nothing: no tracker rows, no folders, no job description or letter files, no drafts, no forms, no adapter updates, no saved jobs on a board. For step 2 do a `sync dry`. For each job report its ID, title, company, route, the score with the ratings and why, and what a normal run would have done next (prepare, submit automatically, wait for approval). Use it to test a new profile and its scoring. Steps 5 and 6 are skipped.
+If the user asked for `run dry`, do steps 1 to 4, write the summary of step 7, and stop. Search, filter, score and route as normal, but write nothing: no tracker rows, no folders, no job description or letter files, no drafts, no forms, no adapter updates, no saved jobs on a board. For step 2 do a `sync dry`. For each job report its ID, title, company, route, the score with the ratings and why, and what a normal run would have done next (prepare, submit automatically, wait for approval), with the next steps from `_shared.md` ("Next steps per job"). Use it to test a new profile and its scoring. Steps 5 and 6 are skipped.
 
 ## 1. Load
 
@@ -55,7 +55,7 @@ For every job that will be applied to or kept ready:
 4. Draft a cover letter only if the route needs approval, or the form requires one. An optional letter field stays empty unless `_custom.md` says otherwise. Follow `_shared.md`, "Answers and letters" (including the plan first when `letters.plan_first` is true). Save it as `cover-letter.txt` in the job's folder.
 5. For email-only applications, also write the ready-to-send email (to, subject, body, attachments) into `application-notes.txt`, and create it as a draft if an email adapter is enabled. Do not send it.
 
-Write what you did in `application-notes.txt`: route, CV, contact, answers you will give, ID, and what is open.
+Write what you did in `application-notes.txt`: route, CV, contact, answers you will give, ID, what is open, and the next steps for the user (`_shared.md`, "Next steps per job").
 
 ## 6. Apply
 
@@ -79,5 +79,5 @@ A job in a special track, such as a graduation project, uses the route its rules
 
 1. Add or update every job with `career-pilot tracker add` or `tracker status`. Fields: job ID, company, role, route, score, status, apply type, CV, letter status, dates, link, notes. The CV is never empty: the file name, or `not_needed` when the application asks for no CV.
 2. If `adapters` has a tracker mirror enabled, update it from the same rows.
-3. Write the summary in the format from `_shared.md`. Count from the tracker.
-4. Close with one question: which IDs to approve, edit or drop. Do not send anything.
+3. Write the summary in the format from `_shared.md`, with the next steps for each job. Count from the tracker.
+4. Close with one question: which IDs to approve, edit or drop, and the answers to the choices in the next steps. Do not send anything.

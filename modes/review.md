@@ -12,6 +12,7 @@ There are two different approvals. A letter OK approves the text. Only a send OK
 |---|---|
 | An edit ("put this in the second paragraph", "more about my last project") | Change the letter as asked, keeping the user's wording and the letter rules. Run `career-pilot letter-check` and check the facts again. Show the new text in the chat. Wait for the next explicit OK for this ID. An edit is **never** an approval |
 | A plan confirmation (when `letters.plan_first` is true) | Write the full letter from the confirmed plan |
+| An answer to the next steps (a choice, a change to a point, an answer to a form question) | Update the plan and the proposed answers, then write the letter, email or answers from them and show them. This is not an approval: wait for the explicit OK for this ID |
 | A letter OK ("1. letter ok", "1. looks good", or a plain "1. okay") | The text is approved. Finalize the letter (below). Nothing is sent. Ask once whether to send |
 | A send OK ("ok send", "ok submit", "send the application") | Do the sending steps (below) for that ID only |
 | A question or a doubt | Answer it. Change nothing |

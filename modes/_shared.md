@@ -98,10 +98,35 @@ End every `run` with this, in the chat:
 
 Waiting for approval
 <id> <company>, <role>: route, score, place, hours, posting age, contact, CV (or not needed), letter status,
-  why it waits, first lines of the letter
+  why it waits, first lines of the letter (if one was drafted)
+  Next steps: how you would apply, what you would write, the form answers, the choices
+  for the user (see "Next steps per job")
 
 Searches: <done>/<planned>. Status changes: <applied automatically>, <proposed>.
 To fix: duplicates, missing fields, skipped adapters, anything blocked.
+```
+
+### Next steps per job
+
+The user should be able to decide on a job from its summary entry alone. So after the facts, every job waiting for approval gets a short "Next steps" part, written to the user in plain sentences ("I would ...", "your ..."). In `run dry` every job a normal run would prepare gets one too. It holds:
+
+1. **How to apply and with which CV.** The channel (the board's form, the company's own form, email) and the CV by its file name, or "no CV, the form does not ask for one".
+2. **What you would write.** For an email application: a short introduction plus the points of the email. For a letter: one line per paragraph. Tie every requirement of the listing that matters to one experience or project from the facts files, and name the file it comes from: "the listing is about <requirement>, so I would write about <experience or project> (from <file>)". Use only what the facts files say. If the listing asks for no letter, or for something else instead (projects, a portfolio, a link), say so and propose what to send.
+3. **The form questions.** Every question the form asks that `answers` does not settle, in the form's own words and with its limits (words, sentences, characters), each followed by the answer you would give in a line or two and where it comes from (`answers.<key>`, a facts file, the listing). Read the questions from the listing and the application page without logging in and without filling or submitting anything. If the form is behind a login, write "form questions not visible without logging in".
+4. **Choices for the user.** Where two or more options fit equally well (which project to lead with, whether a role that differs from the targets in `_profile.md` is wanted), list them and ask which one. Where a question needs looking into (for example "name one thing about our product you would improve"), look first on public pages, read-only, and report what you found; ask only what stays open.
+
+Keep it to about five to ten lines per job. It is a proposal, not the text itself: the full letter, email or answers are written after the user replies (in `review` mode). Write the same next steps into the job's `application-notes.txt`.
+
+Example (fake data):
+
+```
+1 Example Software Ltd, Junior Data Engineer: email application, score 8, Exampletown, 16 h, 2 days old,
+  contact: a named recruiter on the listing, CV: Alex-Example-CV-Data.pdf, no letter yet.
+  Next steps: I would send a short email. After two lines about you, since the job is about cleaning and
+  analysing data, I would write about your thesis on sensor data and the forecasting tool that builds on
+  it (both from facts.md). The form also asks "What are you looking for, and when can you start?" (max 3
+  sentences): I would answer with answers.hours_per_week and answers.start_date. Lead with the thesis or
+  with the forecasting tool?
 ```
 
 `<id>` is a short number for this run (1, 2, 3 ...). The user answers by it in `review` mode. If you keep a page open for the user, title it with the same ID. Write the ID in the tracker notes.
