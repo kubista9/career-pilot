@@ -30,17 +30,17 @@ For every ID, stop and report any failure:
 
 1. the letter text equals the user's current copy, with no placeholders and no typos or claims the user has not accepted;
 2. the hours and the start date in the letter match the listing;
-3. the CV is the newest export and equals the CV recorded in the tracker;
+3. the CV check still holds on the form as it is now: if the form takes a CV, it is the newest export and equals the CV recorded in the tracker; if the tracker says `not_needed`, the form really asks for none;
 4. the answers come from `answers` and the facts files. Ask only about fields they do not cover.
 
 ## Sending an approved ID
 
 One application at a time.
 
-1. Open the form in a visible tab, fill every field using element references, upload the CV and the final letter (or paste the text), and review.
+1. Open the form in a visible tab, fill every field using element references, upload the CV (only if the form takes one) and the final letter (or paste the text), and review.
 2. Stop before a privacy or terms checkbox and ask once whether to tick it. A CAPTCHA, an account or a verification is the user's: hand over, do not work around it.
 3. Press the final Send or Submit only after the user's explicit send OK for that ID. Without it, the user presses Send themselves.
-4. For an email application create a draft with the letter as the body, a one-line intro and the CV attached (or a note to attach it), and tell the user where it is. Send it only on the explicit send OK, one email at a time.
+4. For an email application create a draft with the letter as the body, a one-line intro and the CV attached unless the tracker says `not_needed` (or a note to attach it), and tell the user where it is. Send it only on the explicit send OK, one email at a time.
 5. Wait for the site's confirmation.
 
 An approval for an easy-apply job that failed its checks: if the checks failed because information is missing, say what is missing. Otherwise submit.

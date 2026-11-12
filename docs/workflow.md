@@ -22,7 +22,7 @@ flowchart TD
     search2 --> filter
     enough -- yes, or no stage left --> cap{Daily cap reached?}
     cap -- yes --> overCap[Tracked as to_review<br/>over daily cap]
-    cap -- no --> prepare[5 Prepare<br/>folder, CV, letter if needed]
+    cap -- no --> prepare[5 Prepare<br/>folder, CV if needed, letter if needed]
     prepare --> auto{6 Does the route<br/>have auto_submit on?}
     auto -- no --> ready[Ready: left open<br/>and waiting for your approval]
     auto -- yes --> checks{Every check passes?}
@@ -50,7 +50,7 @@ flowchart TD
 | 2 Sync | Update statuses from email and the boards' own "applied" pages, then draft follow-up emails (a rejection at once, a quiet application after a few days) | [sync](../modes/sync.md) |
 | 3 Search | Run the search plan, one subagent per board. Stage 1 first, later stages only if the first ran dry | [run](../modes/run.md) |
 | 4 Filter and score | Drop, deduplicate, rate, score, route | [run](../modes/run.md) |
-| 5 Prepare | Job folder, CV choice, contact, letter if needed | [run](../modes/run.md) |
+| 5 Prepare | Job folder, CV check (required, optional or not asked) and choice, contact, letter if needed | [run](../modes/run.md) |
 | 6 Apply | Submit only where the route allows it. Everything else waits | [run](../modes/run.md) |
 | 7 Log and summarise | Tracker, summary, the question for you | [run](../modes/run.md) |
 | after the summary | Edits, approvals, feedback | [review](../modes/review.md) |
