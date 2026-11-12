@@ -79,6 +79,7 @@ The tracker is a CSV file, `tracker/applications.csv` in DATA_DIR. Use `career-p
 - Keep ONE current file per job for the letter text, and one for any final letter file. A replaced file moves into a `_to_delete` subfolder of the job's folder: never deleted, never kept next to the new one, never with a version in its name. Tell the user it is there.
 - If a listing requires a language level above the one in the profile, do not skip it silently and do not hide it: ask the user once. If they apply, the letter states their true level.
 - If a job clearly does not fit (hours, level, field, a long assessment), say so plainly and recommend not applying. The user decides.
+- **Check whether the application needs a CV, every time, before choosing one.** Read the listing and the whole form (every page of it) and decide: *required* (a required CV upload, or the listing asks for a CV), *optional* (a CV upload that is not required), or *not asked* (no CV field and no request for one). Required or optional: pick and attach a CV as below. Not asked: attach nothing, do not paste the CV into another field or add it to an email, and record the CV as `not_needed`. If you cannot tell, treat it as required and say so in the summary. A form that would send the CV stored on the board counts as a CV upload. Write the answer (required, optional, not asked) in `application-notes.txt`.
 - Pick the CV whose `focus` fits the job best, in the listing's language when `cvs` has one. Never accept a board's pre-selected or old CV: use the newest export of the chosen file and check the file name the form shows.
 - A recruiter or contact is only a name and a published address found on the listing, the company site or the board. Never guess an address. If there is none, write "none found".
 
@@ -96,7 +97,7 @@ End every `run` with this, in the chat:
 <board>: <n> auto-submitted, <n> waiting      (one line per board)
 
 Waiting for approval
-<id> <company>, <role>: route, score, place, hours, posting age, contact, CV, letter status,
+<id> <company>, <role>: route, score, place, hours, posting age, contact, CV (or not needed), letter status,
   why it waits, first lines of the letter
 
 Searches: <done>/<planned>. Status changes: <applied automatically>, <proposed>.

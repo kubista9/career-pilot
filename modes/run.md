@@ -50,7 +50,7 @@ For each opened job, read the full description and write down: job ID (`board:id
 For every job that will be applied to or kept ready:
 
 1. Create the job's folder in `tracker.applications_dir` and write the job description file: first line "<Company> - <Role>", then the listing link, then the facts from the listing (location, hours, compensation, about, responsibilities, requirements, how to apply). Plain text, facts only.
-2. Choose the CV by `focus`.
+2. Check whether the application needs a CV (`_shared.md`, "Answers and letters"). If it does, choose the CV by `focus`. If not, the CV is `not_needed`.
 3. Look for the contact (see `_shared.md`).
 4. Draft a cover letter only if the route needs approval, or the form requires one. An optional letter field stays empty unless `_custom.md` says otherwise. Follow `_shared.md`, "Answers and letters" (including the plan first when `letters.plan_first` is true). Save it as `cover-letter.txt` in the job's folder.
 5. For email-only applications, also write the ready-to-send email (to, subject, body, attachments) into `application-notes.txt`, and create it as a draft if an email adapter is enabled. Do not send it.
@@ -66,7 +66,7 @@ What happens depends on the route, set in `routes.<route>.auto_submit`.
 **`auto_submit: true`**: submit only if every check passes:
 
 - every required question can be answered truthfully from `answers` and the facts files;
-- the CV file is the chosen one, confirmed by its full file name on the form;
+- the CV check was done: if the form takes a CV, the file is the chosen one, confirmed by its full file name on the form; if it takes none, nothing was attached;
 - a required letter was written, checked and attached;
 - no account, login, password, CAPTCHA, verification, payment or legal confirmation is needed;
 - nothing on the page looks wrong.
@@ -77,7 +77,7 @@ A job in a special track, such as a graduation project, uses the route its rules
 
 ## 7. Log and summarise
 
-1. Add or update every job with `career-pilot tracker add` or `tracker status`. Fields: job ID, company, role, route, score, status, apply type, CV, letter status, dates, link, notes. The CV is never empty.
+1. Add or update every job with `career-pilot tracker add` or `tracker status`. Fields: job ID, company, role, route, score, status, apply type, CV, letter status, dates, link, notes. The CV is never empty: the file name, or `not_needed` when the application asks for no CV.
 2. If `adapters` has a tracker mirror enabled, update it from the same rows.
 3. Write the summary in the format from `_shared.md`. Count from the tracker.
 4. Close with one question: which IDs to approve, edit or drop. Do not send anything.
