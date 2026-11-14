@@ -233,23 +233,31 @@ def run_tracker(args: argparse.Namespace) -> int:
         return EXIT_TRACKER
 
 
+def describe_match(row: tracker.Row) -> str:
+    return f"{row['job_id']}, {row['company']}, {row['role']} [{row['status']}]"
+
+
 def tracker_command(args: argparse.Namespace, csv_path: Path, applications_dir: Path | None) -> int:
     if args.tracker_command == "add":
         values = {
             field: getattr(args, field) or "" for field in tracker.FIELDS if hasattr(args, field)
         }
+        similar = tracker.find(
+            tracker.load(csv_path), values["job_id"], values["company"], values["role"]
+        )
         row = tracker.add(csv_path, values)
         print(f"Added {row['job_id']}: {row['company']}, {row['role']} ({row['status']})")
+        for other, _ in similar:
+            print(f"Warning: similar job already in the tracker: {describe_match(other)}")
     elif args.tracker_command == "find":
-        rows = tracker.load(csv_path)
-        matches = tracker.find(rows, args.job_id, args.company, args.role)
+        if not (args.job_id or (args.company and args.role)):
+            raise tracker.TrackerError("find needs --job-id, or both --company and --role.")
+        matches = tracker.find(tracker.load(csv_path), args.job_id, args.company, args.role)
         if not matches:
             print("new: not in the tracker")
         for row, reason in matches:
-            print(
-                f"duplicate: {row['job_id']}, {row['company']}, {row['role']} "
-                f"[{row['status']}] ({reason})"
-            )
+            kind = "similar" if reason == tracker.SIMILAR else "duplicate"
+            print(f"{kind}: {describe_match(row)} ({reason})")
     elif args.tracker_command == "status":
         row, moved = tracker.set_status(
             csv_path,

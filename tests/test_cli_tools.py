@@ -223,3 +223,39 @@ def test_followups_command_and_followup_record(
     _, out = run(capsys, "tracker", "followups")
     assert "Rejected, no follow-up yet (ask for feedback): 0" in out
     assert "nothing for 5+ days" in out
+
+
+@pytest.mark.parametrize("argv", [(), ("--company", "Acme"), ("--role", "Dev")])
+def test_tracker_find_needs_a_job_id_or_company_and_role(
+    data_dir: Path, capsys: pytest.CaptureFixture[str], argv: tuple[str, ...]
+) -> None:
+    code, out = run(capsys, "tracker", "find", *argv)
+
+    assert code == EXIT_TRACKER
+    assert out.startswith("Tracker: PROBLEM - ")
+
+
+def test_tracker_reports_similar_roles_as_warnings(
+    data_dir: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    run(capsys, "tracker", "add", "--job-id", "b:1", "--company", "Acme", "--role", "Developer")
+
+    code, out = run(capsys, "tracker", "find", "--company", "Acme", "--role", "Senior Developer")
+    assert code == EXIT_OK
+    assert out.startswith("similar: b:1, Acme, Developer")
+
+    code, out = run(
+        capsys,
+        "tracker",
+        "add",
+        "--job-id",
+        "b:2",
+        "--company",
+        "Acme",
+        "--role",
+        "Senior Developer",
+    )
+    assert code == EXIT_OK
+    lines = out.splitlines()
+    assert lines[0].startswith("Added b:2")
+    assert lines[1].startswith("Warning: similar") and "b:1" in lines[1]

@@ -248,3 +248,195 @@ def test_followups_skip_routes_and_old_rejections(csv_path: Path) -> None:
 
     assert [row["job_id"] for row in due["stale"]] == ["b:2"]
     assert [row["job_id"] for row in due["rejected"]] == ["b:3"]
+
+
+def add_role(csv_path: Path, job_id: str, company: str, role: str) -> None:
+    tracker.add(csv_path, {"job_id": job_id, "company": company, "role": role}, today=TODAY)
+
+
+def test_c_cpp_and_csharp_are_different_roles(csv_path: Path) -> None:
+    add_role(csv_path, "b:1", "Acme Example", "C++ Developer")
+
+    rows = tracker.load(csv_path)
+    assert tracker.find(rows, company="Acme Example", role="C# Developer") == []
+    assert tracker.find(rows, company="Acme Example", role="C Developer") == []
+    assert tracker.find(rows, company="Acme Example", role="c++ developer")
+
+
+def test_accents_fold_to_the_base_letter(csv_path: Path) -> None:
+    add_role(csv_path, "b:1", "Acme Example", "Développeur")
+
+    rows = tracker.load(csv_path)
+    assert tracker.find(rows, company="Acme Example", role="Developpeur")
+    assert not tracker.find(rows, company="Acme Example", role="Dveloppeur")
+
+
+def test_names_without_latin_letters_are_never_checked(csv_path: Path) -> None:
+    add_role(csv_path, "b:1", "Пример Один", "Разработчик")
+    add_role(csv_path, "b:2", "Пример Два", "Разработчик")  # no DuplicateError
+
+    assert len(tracker.load(csv_path)) == 2
+    assert tracker.find(tracker.load(csv_path), company="Пример Один", role="Разработчик") == []
+
+
+def test_job_ids_compare_exactly_apart_from_case_and_spaces(csv_path: Path) -> None:
+    add_role(csv_path, "board:0000000010", "Acme Example", "Dev")
+
+    rows = tracker.load(csv_path)
+    assert tracker.find(rows, job_id="board:00000000-10") == []
+    assert tracker.find(rows, job_id=" BOARD:0000000010 ")
+
+
+def test_company_without_ascii_does_not_move_the_month_folder(
+    csv_path: Path, tmp_path: Path
+) -> None:
+    applications = tmp_path / "applications"
+    other = make_folder(applications, "to-review", "other-company")
+    add_role(csv_path, "b:1", "Пример Один", "Dev")
+
+    _, moved = tracker.set_status(csv_path, "b:1", "applied", applications_dir=applications)
+
+    assert "nothing moved" in moved
+    assert (other / "cover-letter.txt").read_text() == "letter"
+    assert not (applications / "applied").exists()
+
+
+def test_similar_role_is_found_but_never_refuses_an_add(csv_path: Path) -> None:
+    add_role(csv_path, "b:1", "Acme Example", "Backend Developer (part-time)")
+
+    rows = tracker.load(csv_path)
+    for role in ("Backend Developer (part-time) (EN)", "Backend Developer"):
+        [(row, reason)] = tracker.find(rows, company="Acme Example", role=role)
+        assert row["job_id"] == "b:1" and reason == tracker.SIMILAR
+    add_role(csv_path, "b:2", "Acme Example", "Backend Developer")
+    assert len(tracker.load(csv_path)) == 2
+
+
+def test_extra_columns_survive_a_write(csv_path: Path) -> None:
+    add_role(csv_path, "b:1", "Acme Example", "Dev")
+    text = csv_path.read_text().replace("notes\n", "notes,my_column\n").rstrip("\n")
+    csv_path.write_text(text + ",mine\n")
+
+    tracker.mark_followup(csv_path, "b:1", today=TODAY)
+    add_role(csv_path, "b:2", "Beta Example", "Dev")
+
+    first, second = tracker.load(csv_path)
+    assert first["my_column"] == "mine" and second["my_column"] == ""
+    assert csv_path.read_text().splitlines()[0].endswith(",notes,my_column")
+
+
+def test_row_with_more_cells_than_the_header_does_not_crash(csv_path: Path) -> None:
+    add_role(csv_path, "b:1", "Acme Example", "Dev")
+    with csv_path.open("a") as handle:
+        handle.write("b:2,Beta,Dev,,,,,,,,,,,,,extra,more\r\n")
+
+    assert [row["job_id"] for row in tracker.load(csv_path)] == ["b:1", "b:2"]
+
+
+def test_csv_with_a_byte_order_mark_keeps_its_job_ids(csv_path: Path) -> None:
+    add_role(csv_path, "b:1", "Acme Example", "Dev")
+    csv_path.write_bytes(b"\xef\xbb\xbf" + csv_path.read_bytes())
+
+    tracker.mark_followup(csv_path, "b:1", today=TODAY)
+
+    assert tracker.load(csv_path)[0]["job_id"] == "b:1"
+    assert not csv_path.read_bytes().startswith(b"\xef\xbb\xbf")
+
+
+def test_formula_cells_are_escaped_on_disk_and_round_trip(csv_path: Path) -> None:
+    evil = '=HYPERLINK("http://x.example.com","x")'
+    add_role(csv_path, "b:1", evil, "-role")
+    tracker.set_status(csv_path, "b:1", "applied", note="@note")
+    tracker.mark_followup(csv_path, "b:1", note="+call", today=TODAY)
+    add_role(csv_path, "b:2", "'=already quoted", "Dev")
+
+    first, second = tracker.load(csv_path)
+    assert first["company"] == evil and first["role"] == "-role"
+    assert first["notes"] == "@note; Follow-up email 2026-11-02: +call"
+    assert second["company"] == "'=already quoted"
+    text = csv_path.read_text()
+    assert "'=HYPERLINK" in text and "\n=" not in text and ",=" not in text
+
+
+def test_negative_score_is_not_escaped(csv_path: Path) -> None:
+    tracker.add(
+        csv_path,
+        {"job_id": "b:1", "company": "Acme Example", "role": "Dev", "score": "-2"},
+        today=TODAY,
+    )
+
+    assert ",-2," in csv_path.read_text()
+    assert tracker.load(csv_path)[0]["score"] == "-2"
+
+
+def _add_in_process(args: tuple[str, int]) -> int:
+    path, number = args
+    tracker.add(
+        Path(path), {"job_id": f"b:{number}", "company": f"Company {number}", "role": "Dev"}
+    )
+    return number
+
+
+def test_parallel_adds_lose_no_rows(csv_path: Path) -> None:
+    import multiprocessing
+
+    with multiprocessing.get_context("fork").Pool(10) as pool:
+        done = pool.map(_add_in_process, [(str(csv_path), n) for n in range(20)])
+
+    assert len(done) == 20
+    assert len(tracker.load(csv_path)) == 20
+    assert [p.name for p in csv_path.parent.iterdir() if p.name.endswith(".tmp")] == []
+
+
+def test_folder_in_another_month_is_found_and_keeps_its_month(
+    csv_path: Path, tmp_path: Path
+) -> None:
+    applications = tmp_path / "applications"
+    folder = applications / "to-review" / "2026-10" / "acme-example"
+    folder.mkdir(parents=True)
+    add_role(csv_path, "b:1", "Acme Example", "Dev")  # found 2026-11
+
+    _, moved = tracker.set_status(csv_path, "b:1", "applied", applications_dir=applications)
+
+    assert moved == "moved to-review/2026-10/acme-example to applied/2026-10/acme-example"
+    assert (applications / "applied" / "2026-10" / "acme-example").is_dir()
+    assert not folder.exists()
+
+
+def test_several_folders_in_other_months_move_nothing(csv_path: Path, tmp_path: Path) -> None:
+    applications = tmp_path / "applications"
+    for month in ("2026-09", "2026-10"):
+        (applications / "to-review" / month / "acme-example").mkdir(parents=True)
+    add_role(csv_path, "b:1", "Acme Example", "Dev")
+
+    _, moved = tracker.set_status(csv_path, "b:1", "applied", applications_dir=applications)
+
+    assert moved.startswith("several folders found, nothing moved")
+    assert "2026-09" in moved and "2026-10" in moved
+    assert (applications / "to-review" / "2026-09" / "acme-example").is_dir()
+    assert (applications / "to-review" / "2026-10" / "acme-example").is_dir()
+
+
+def test_private_files_and_folders_are_created_owner_only(csv_path: Path, tmp_path: Path) -> None:
+    import os
+    import stat
+
+    applications = tmp_path / "applications"
+    make_folder(applications, "to-review")
+    (applications / "MOVE-MANIFEST.tsv").write_text("")
+    (applications / "MOVE-MANIFEST.tsv").chmod(0o644)  # an older version's manifest
+    add(csv_path)
+    previous = os.umask(0o022)
+    try:
+        tracker.set_status(csv_path, "board:1", "applied", applications_dir=applications)
+        tracker.mark_followup(csv_path, "board:1")
+    finally:
+        os.umask(previous)
+
+    def mode(path: Path) -> int:
+        return stat.S_IMODE(path.stat().st_mode)
+
+    assert mode(csv_path) == 0o600
+    assert mode(applications / "MOVE-MANIFEST.tsv") == 0o600
+    assert mode(applications / "applied") == 0o700
+    assert mode(applications / "applied" / "2026-11") == 0o700
