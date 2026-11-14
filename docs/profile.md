@@ -17,7 +17,7 @@ Run `career-pilot doctor` to check yours.
 | `routing` | Ordered rules that turn a score into a route | `career-pilot score` |
 | `routes` | Per route: label, priority, `auto_submit` | Steps 5 and 6 |
 | `daily_caps` | Most jobs prepared for approval and auto-submitted per day | Step 4 |
-| `letters` | Body length and paragraph limits (minimum and maximum), banned phrases, forbidden claims, forbidden patterns, dashes, and `plan_first` | `career-pilot letter-check`, run and review |
+| `letters` | Body length and paragraph limits (minimum and maximum), banned phrases, forbidden claims, forbidden patterns, dashes, `plan_first`, and `style_skill` (the name of your own writing-style skill, run on every text the agent drafts for you; empty means off) | `career-pilot letter-check`, run and review |
 | `tracker` | Where the CSV and the application folders are; status folders on or off | `career-pilot tracker` |
 | `sync` | How many days of email to read | Sync |
 | `followup` | `stale_days`: days of silence after which an applied job gets a status request (default 5). `rejected_within_days`: only follow up on rejections this recent. `skip_routes`: routes that never get a follow-up | `career-pilot tracker followups` |
@@ -32,7 +32,7 @@ Paths may start with `~`. A relative path is inside the data dir.
 |---|---|
 | Numbers, answers, paths, IDs, boards | `config/profile.yml` |
 | Who you are and what you want | `modes/_profile.md` |
-| Your habits and tools ("run letters through X first") | `modes/_custom.md` |
+| Your habits and tools ("save good matches on the board") | `modes/_custom.md` |
 | Facts a letter may claim | your facts file and `cv.md` |
 
 The agent reads only the slice it needs: `career-pilot brief <mode>` prints it. This keeps the context small.

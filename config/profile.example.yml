@@ -159,6 +159,7 @@ letters:
   forbidden_claims: ["fluent Exampleish"]   # things you must never claim
   forbidden_patterns: ["https?://"]         # regular expressions, e.g. no raw URLs in a letter
   allow_dashes: false
+  style_skill: ""                  # name of your own writing-style skill to run on drafted text; empty: off
 
 # --- Tracking ----------------------------------------------------------------------------------------
 tracker:

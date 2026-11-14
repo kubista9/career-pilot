@@ -109,3 +109,11 @@ def test_seed_files_are_public_and_fake(name: str) -> None:
     assert not is_private_path(name)
     for line in path.read_text().splitlines():
         assert line_findings(line) == [], f"{name} has a private-looking value: {line[:40]}"
+
+
+@pytest.mark.parametrize("mode", ["run", "review", "sync"])
+def test_style_skill_is_off_in_the_example_and_reaches_drafting_modes(
+    example: Profile, mode: str
+) -> None:
+    assert example["letters"]["style_skill"] == ""
+    assert brief_for(example, mode)["letters"]["style_skill"] == ""
