@@ -67,6 +67,7 @@ The tracker is a CSV file, `tracker/applications.csv` in DATA_DIR. Use `career-p
 
 - Job ID: `<board>:<id from the listing URL>`, in lower case, for example `linkedin:123`.
 - Duplicate: same job ID, or same company and role title. A listing already in the tracker, or shown as applied on the board, is skipped without opening it. Keep the easy-apply copy of a cross-posted job.
+- A `similar:` line from `tracker find` means the same company has a job whose title contains this one or the other way round ("Developer" and "Senior Developer"). It is a warning, not a duplicate: the job is not skipped, open it and compare the two, and the summary's "To fix" list names both IDs.
 - Statuses: `to_review` (not sent yet; the notes say why), `applied`, `interview`, `offer`, `rejected`, and `not_relevant` (a job the user's rules say to log but never act on; never prepare or send it). A tracker or an email never moves `rejected`, `interview` or `offer` back.
 - Optional adapters (`adapters` in the profile, such as Notion or Gmail) mirror the tracker or provide read access. If one is switched off or unavailable, the CSV alone is enough.
 
