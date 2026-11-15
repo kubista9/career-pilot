@@ -1,12 +1,18 @@
 [project]
 name = "career-pilot"
-version = "0.0.1"
+version = "0.1.0"
 description = "Job-hunt assistant for Claude Code: search, dedupe, score, track and prepare applications for review."
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.13"
 dependencies = [
     "pyyaml>=6.0.3",
 ]
+
+[project.urls]
+Repository = "https://github.com/kubista9/career-pilot"
+Issues = "https://github.com/kubista9/career-pilot/issues"
 
 [project.scripts]
 career-pilot = "career_pilot.cli:main"

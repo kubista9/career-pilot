@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security or privacy problem
+    url: https://github.com/kubista9/career-pilot/security/advisories/new
+    about: Report private data in the repo, an approval bypass or a prompt injection path. Do not use a public issue.
