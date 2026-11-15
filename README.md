@@ -14,7 +14,7 @@ This repository is generic. Everything about you (profile, CV, rules, tracker) l
 /career-pilot review   answer the summary: edit a letter, approve an ID, give feedback
 ```
 
-The flow is in [docs/workflow.md](docs/workflow.md). Small `career-pilot` commands do the mechanical work (scoring, the tracker, letter checks) so the model spends its effort on judgement, not arithmetic.
+The flow is in [docs/workflow.md](docs/workflow.md), and the planned flow in [docs/target-workflow.md](docs/target-workflow.md). Small `career-pilot` commands do the mechanical work (scoring, the tracker, letter checks) so the model spends its effort on judgement, not arithmetic.
 
 ## Quick start
 
