@@ -220,8 +220,9 @@ def run_tracker(args: argparse.Namespace) -> int:
     try:
         profile = optional_profile(data_dir)
         csv_path, applications_dir = tracker_paths(profile, data_dir)
-        if getattr(args, "days", 0) is None:
-            args.days = int(lookup(profile, "followup.stale_days", DEFAULT_STALE_DAYS))
+        if args.tracker_command == "followups":
+            if args.days is None:
+                args.days = int(lookup(profile, "followup.stale_days", DEFAULT_STALE_DAYS))
             if not args.skip_route:
                 args.skip_route = list(lookup(profile, "followup.skip_routes", []) or [])
             if args.rejected_within is None:
