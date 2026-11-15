@@ -229,6 +229,19 @@ def test_followup_resets_the_clock_and_ends_the_rejection_reminder(csv_path: Pat
     assert [row["job_id"] for row in later["stale"]] == ["b:1"]
 
 
+def test_followups_stop_after_two_status_requests(csv_path: Path) -> None:
+    add(csv_path, "b:1", "Twice", status="applied")
+    add(csv_path, "b:2", "Once", status="applied")
+    tracker.mark_followup(csv_path, "b:1", today=date(2026, 11, 1))
+    tracker.mark_followup(csv_path, "b:1", today=date(2026, 11, 8))
+    tracker.mark_followup(csv_path, "b:2", today=date(2026, 11, 8))
+    rows = tracker.load(csv_path)
+
+    due = tracker.followups_due(rows, 5, today=date(2026, 11, 20))
+
+    assert [row["job_id"] for row in due["stale"]] == ["b:2"]
+
+
 def test_followup_for_unknown_job(csv_path: Path) -> None:
     with pytest.raises(TrackerError):
         tracker.mark_followup(csv_path, "b:404")
