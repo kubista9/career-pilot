@@ -57,7 +57,7 @@ flowchart TD
         s4b -- new --> s4d["Pick the track, rate each criterion<br/>with evidence from the listing"]:::agent
         s4d --> s4e["career-pilot score<br/>total, gates, minimums, route"]:::cmd
         s4e --> s4f{"Route is dropped?"}:::cmd
-        s4f -- no --> s4g["List the knock-outs · planned"]:::agent
+        s4f -- no --> s4g["List the knock-outs"]:::agent
         d4["Reads: filters for title words, years and closed listings,<br/>tracker.file, scoring.tracks with criteria, rubric,<br/>gates, min and threshold, routing, routes"]:::data -.-> s4
     end
     s4 -- yes --> skip["Skipped, not stored"]:::agent
@@ -106,7 +106,7 @@ flowchart TD
     p0b -- no --> p1
     p0c --> p1
 
-    subgraph P1 ["Per job · planned: one subagent per job, at most three at once"]
+    subgraph P1 ["Per job · one subagent per job, at most three at once"]
         p1["Job folder and description file"]:::sub --> p2{"Does the form ask for a CV?<br/>the whole form is read"}:::sub
         d5["Reads: tracker.applications_dir,<br/>the listing, the application form"]:::data -.-> p1
     end
@@ -139,7 +139,7 @@ flowchart TD
     subgraph FM ["Form · planned skill: apply · form subagent, one per shared login"]
         f1["Fill every section, upload the CV"]:::sub --> f2["Read the values back<br/>after each page"]:::sub
         f2 --> f3["Report missing facts, consent boxes,<br/>CAPTCHA and account steps"]:::sub
-        d8["Reads: form_facts · planned, not merged, then answers,<br/>then candidate, then the facts files"]:::data -.-> f1
+        d8["Reads: form_facts, then answers,<br/>then candidate, then the facts files"]:::data -.-> f1
     end
     l5 --> f1
     f3 --> q["Missing facts asked in one batch,<br/>you tick the consent boxes"]:::you
@@ -239,13 +239,13 @@ Drops what cannot fit, removes duplicates, rates the rest and picks a route.
 | Reads | `filters` (`title_words`, `max_required_years`, `drop_closed`), `tracker.file`, `scoring.tracks` (`criteria`, `rubric`, `gates`, `min`, `threshold`), `routing`, `routes`, `daily_caps` |
 | Commands | `career-pilot tracker find`, `career-pilot score` |
 | Skill | Today: `career-pilot`, mode `run`. Planned: `search` |
-| Status | Works today. The "List the knock-outs" box is planned: no mode names it |
+| Status | Works today, including the knock-outs list (`run.md`, step 4, item 7) |
 
 The daily cap is checked here (`run.md`, step 4, item Caps). The profile holds the cap (`daily_caps.approval`, `daily_caps.auto_submit`). No prompt says where the count of jobs prepared or submitted today comes from, and no command gives it. `career-pilot tracker counts` returns jobs per status and per route over the whole tracker, with no date. `tracker list` filters by status and route only. The tracker has `found` and `updated` dates, but no command filters on them. Today the agent has to count the rows itself. This is the kind of arithmetic that AGENTS.md says belongs in a command.
 
 ### 5 Prepare
 
-Gets one application ready: folder, CV, letter and form. In the target it runs only for jobs the user picked, in batches of 5. Today `run` prepares every job that is not over the cap.
+Gets one application ready: folder, CV, letter and form. In the target it runs only for jobs the user picked, in batches of 5. Today `run` prepares every job that is not over the cap, in batches of 5 (`run.md`, step 5), and fills the form without submitting it.
 
 #### 5a Preflight
 
@@ -257,7 +257,7 @@ Opens every portal of the batch read only, so all sign-ins are asked for at once
 | Reads | `boards`, the application links of the batch |
 | Commands | None |
 | Skill | Planned: `apply` |
-| Status | Planned. Today safety rule 2 says never log in: a form that needs one is left open and flagged |
+| Status | Works today (`_shared.md`, "Using subagents"; `run.md`, step 5). You sign in: the agent never logs in (safety rule 2). The skill name `apply` is planned |
 
 #### 5b CV
 
@@ -265,7 +265,7 @@ Decides whether the form asks for a CV and picks or builds one.
 
 | | |
 |---|---|
-| Who does it | Today: the main agent or a drafting subagent, which picks a CV by `focus` and language. Planned: the `cv` skill with a design connector, and you approve each save |
+| Who does it | Today: the main agent or the job's subagent, which picks a CV by `focus` and language. Planned: the `cv` skill with a design connector, and you approve each save |
 | Reads | `cvs` (`file`, `focus`, `language`), `sources.cv_dir`, `sources.facts`, `cv.md`, the listing and the whole form. Planned: the CV builder keys, not named yet |
 | Commands | None today. Planned: `career-pilot ats-check` (issue 9) |
 | Skill | Today: `career-pilot`, mode `run`. Planned: `cv` |
@@ -279,7 +279,7 @@ Writes the cover letter only when the route needs approval or the form requires 
 
 | | |
 |---|---|
-| Who does it | Main agent, or a drafting subagent. A subagent does not see skills (`_shared.md`, "Answers and letters"), so the main agent runs the style skill on its draft |
+| Who does it | Main agent, or the job's subagent. A subagent does not see skills (`_shared.md`, "Answers and letters"), so the main agent runs the style skill on its draft |
 | Reads | `sources.letter_rules`, `sources.facts`, `letters` (`plan_first`, `min_chars`, `max_chars`, `min_paragraphs`, `max_paragraphs`, `min_paragraph_chars`, `banned_phrases`, `forbidden_claims`, `forbidden_patterns`, `allow_dashes`, `style_skill`), the listing, the CV chosen |
 | Commands | `career-pilot letter-check` |
 | Skill | Today: `career-pilot`, plus the user's own style skill named in `letters.style_skill`. Planned: `letter` |
@@ -291,11 +291,11 @@ Fills the form and reads the values back so a wrong value is found before the us
 
 | | |
 |---|---|
-| Who does it | Planned: a form subagent, one per shared login. You answer the missing facts in one batch and tick the consent boxes |
-| Reads | Planned: `form_facts` (comes with the form-runs work, not merged), then `answers`, then `candidate`, then the facts files. Today only `answers`, `candidate` and the facts files exist |
+| Who does it | A form subagent, one per job. Jobs that share a login run one after the other, and at most three run at once (`_shared.md`, "Using subagents"). You answer the missing facts in one batch and tick the consent boxes |
+| Reads | `form_facts`, then `answers`, then `candidate`, then the facts files (`_shared.md`, "Filling application forms") |
 | Commands | None |
 | Skill | Planned: `apply` |
-| Status | Form read-back: planned (issue 5). `form_facts`: planned with the form-runs work, not merged (issue 19, phase 1). The facts register and lookup is a separate item: planned (issue 15). Approval sheet: planned (issue 4). Today a route without `auto_submit` fills nothing (`run.md`, step 6) and `review` fills the form after approval |
+| Status | Works today: `form_facts`, the form subagents and the preflight. The read-back after each page is a rule in "Filling application forms", not a command. The facts register and lookup is a separate item: planned (issue 15). Approval sheet: planned (issue 4). Step 5 fills the form, and on a route without `auto_submit` nothing is submitted until approval (`run.md`, steps 5 and 6) |
 
 ### 6 Apply and auto-submit
 
@@ -307,7 +307,7 @@ Submits where a route has `auto_submit` on and every check passes. Everything el
 | Reads | `routes.<name>.auto_submit`, `answers`, `sources.facts`, `cvs`, `daily_caps.auto_submit` |
 | Commands | None. The count against `daily_caps.auto_submit` has no command (see step 4) |
 | Skill | Today: `career-pilot`, mode `run`. Planned: not decided (see "Open points") |
-| Status | Works today |
+| Status | Works today. A route without `auto_submit` submits nothing: the form stays filled and open for `review` (`run.md`, step 6) |
 
 ### 7 Log and summarise
 
@@ -363,8 +363,7 @@ Interviews a new user until `career-pilot doctor` is clean.
 - **The daily cap count has no command.** Step 4 above. `run.md`, step 4 and `_shared.md`, safety rule 7 name the cap but not how to count.
 - **Email in `sync`: three lines disagree.** `_shared.md`, safety rule 11 says email is read-only in `sync` and sends only for approved applications. `sync.md`, step 1 says never draft. `sync.md`, step 5 drafts follow-ups. This is M1 in issue 19.
 - **Follow-up reasons: two lines disagree.** `sync.md`, step 5 (last paragraph) says no draft when the rejection gives a clear reason. `sync.md`, step 5 item 2 says skip a rejection with a detailed reason only if `_custom.md` says so. This is M2 in issue 19.
-- **"Never wait for input" against the target.** `run.md`, intro says never wait for input before step 7. The attended prepare part asks for sign-ins and missing facts, so it cannot stay in `run`. This is the reason for the split.
+- **Asking the user inside `run`.** `run.md`, intro now lists the only points where the run asks (sign-ins, missing facts, consent boxes, claims to confirm) and says what happens without an answer: the job is left open as `to_review` with a note. This is a stopgap. The attended prepare part still does not fit an unattended hunt, so the split still removes it.
 - **Who runs `tracker find` in the search step.** `run.md`, step 3 says to open a result only if the tracker does not know it, but a search subagent has no profile (`SKILL.md`, "Subagents"). Not stated which agent runs the command.
 - **Style skill and subagents.** `_shared.md`, "Answers and letters" says a subagent does not see skills. With one letter subagent per job, the main agent has to run the style skill on each draft, or the subagent needs access. Not decided.
-- **Drafting batches.** `_shared.md`, "Using subagents" says drafting subagents get batches of about five jobs. The target diagram uses one subagent per job. The prompt will need to change with it.
 - **Skill names.** The names in the diagrams are the eight proposed in issue 18: `setup`, `search`, `cv`, `letter`, `apply`, `sync`, `debrief` and `run`. Issue 18 decides them.
