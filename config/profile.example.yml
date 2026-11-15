@@ -45,6 +45,28 @@ answers:
   other:                           # any extra form fields you are often asked for
     gender: "prefer not to say"
 
+# --- Form facts: exact values for application forms (optional) --------------------------------------------
+# Forms ask for structured fields that a CV parser often gets wrong. Where a value is here, forms use it
+# instead of candidate or answers. Check every value against your facts file and CV; leave out what you
+# do not know, and the agent will ask.
+form_facts:
+  address: { street: Example Street, house_number: "1", postcode: "0000 AA", city: Exampletown, country: Exampleland }
+  phone: { type: Mobile, country_code: "+00", number: "000000000" }
+  websites: [https://alex.example.com]
+  work_history:                    # newest first, exact titles, dates as YYYY-MM, end "present" if current
+    - { title: Junior Software Developer, employer: Example Software Ltd, location: Exampletown, start: 2025-03, end: present }
+    - { title: Software Engineering Intern, employer: Placeholder Corp, location: Sampleville, start: 2024-07, end: 2025-02 }
+  education:
+    - { degree: BSc Computer Science, school: Example University, location: Exampletown, start: 2021-09, end: 2025-02, status: completed }
+  skills: [Python, TypeScript, SQL, Git]
+  certifications:
+    - { name: Example Cloud Basics, issuer: Example Academy, date: 2026-10, url: https://example.com/badge/0000 }
+  languages:                       # CEFR levels where a form asks for one; never above the truth
+    - { name: English, level: C1 }
+    - { name: Exampleish, level: A2 }
+  salary: { hourly: "30 EUR", yearly: "40000 EUR" }
+  gender: { value: prefer not to say, only_when_required: true }   # left empty unless the form requires it
+
 # --- Where to look ---------------------------------------------------------------------------------
 boards:
   - name: LinkedIn
@@ -184,6 +206,13 @@ followup:
 adapters:
   gmail: { enabled: false }
   notion: { enabled: false }       # mirrors the tracker; the token comes from NOTION_TOKEN in .env
+
+# --- Accounts (optional) ---------------------------------------------------------------------------------
+# Some employer systems (Workday and similar) need an account. The agent never types a password and never
+# creates the account itself: it stops at that step. You may name a private, gitignored file outside the repo
+# that holds the email to use; its values never go into a prompt.
+accounts:
+  credentials_file: config/accounts.local.yml
 
 # --- Privacy ---------------------------------------------------------------------------------------------
 # Words that must never appear in the repo (your name, street, employer ...). Checked on your

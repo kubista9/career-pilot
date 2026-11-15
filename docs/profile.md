@@ -10,6 +10,7 @@ Run `career-pilot doctor` to check yours.
 | `sources` | Paths to your facts file, your letter rules and your CV folder | Every mode |
 | `cvs` | Your CV files, each with a `focus` and a `language` | Choosing a CV |
 | `answers` | Standard answers: hours, start date, salary, work permit, licence, and `other` for extra form fields | Forms |
+| `form_facts` | Exact form values: address parts, phone parts, websites, work history and education with exact titles and dates, skills, certifications, language levels, salary, and fields marked `only_when_required`. Wins over `candidate` and `answers` on forms | Forms, checking a parsed CV |
 | `boards` | Each board's search URL, whether it has easy apply, and its tracker pages | Search, sync |
 | `search` | Location, result pages per search, `next_stage_below`, and keyword groups. A group may set `stage`, `pages`, `location`, `locations`, `radius_km`, `max_age_days`, `boards` and `note`. A keyword can hold phrases joined with OR | Search |
 | `filters` | Title words to drop, maximum years required, drop closed listings | Step 4 |
@@ -22,6 +23,7 @@ Run `career-pilot doctor` to check yours.
 | `sync` | How many days of email to read | Sync |
 | `followup` | `stale_days`: days of silence after which an applied job gets a status request (default 5). `rejected_within_days`: only follow up on rejections this recent. `skip_routes`: routes that never get a follow-up | `career-pilot tracker followups` |
 | `adapters` | Optional Gmail and Notion adapters, off by default | Sync, tracker mirror |
+| `accounts` | Optional name of a private credentials file for employer systems that need an account | Apply |
 | `privacy` | Words that must never appear in the repo. Never shown to the agent | `career-pilot privacy-check` |
 
 Paths may start with `~`. A relative path is inside the data dir.

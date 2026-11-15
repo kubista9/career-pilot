@@ -19,6 +19,7 @@ BRIEF_KEYS: dict[str, tuple[str, ...]] = {
         "sources",
         "cvs",
         "answers",
+        "form_facts",
         "boards",
         "search",
         "filters",
@@ -37,6 +38,7 @@ BRIEF_KEYS: dict[str, tuple[str, ...]] = {
         "sources",
         "cvs",
         "answers",
+        "form_facts",
         "letters",
         "routes",
         "tracker",
@@ -44,7 +46,7 @@ BRIEF_KEYS: dict[str, tuple[str, ...]] = {
     ),
     "search": ("boards", "search", "filters"),
     "score": ("scoring", "routing", "routes", "filters"),
-    "apply": ("candidate", "sources", "cvs", "answers", "routes"),
+    "apply": ("candidate", "sources", "cvs", "answers", "form_facts", "routes"),
 }
 
 
