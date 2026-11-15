@@ -117,3 +117,9 @@ def test_style_skill_is_off_in_the_example_and_reaches_drafting_modes(
 ) -> None:
     assert example["letters"]["style_skill"] == ""
     assert brief_for(example, mode)["letters"]["style_skill"] == ""
+
+
+def test_form_facts_reach_the_modes_that_fill_forms(example: Profile) -> None:
+    for mode in ("run", "review", "apply"):
+        assert "form_facts" in brief_for(example, mode)
+    assert "form_facts" not in brief_for(example, "search")
