@@ -17,16 +17,20 @@ flowchart TD
     rateSpecial --> score
     score --> gate{Below a gate?}
     gate -- yes --> skipped
-    gate -- no --> enough{Enough usable jobs?<br/>next_stage_below}
+    gate -- no --> knock[Knock-outs listed next to the score<br/>recommend not applying if any]
+    knock --> enough{Enough usable jobs?<br/>next_stage_below}
     enough -- no, another stage left --> search2[3 Search next stage<br/>for example the other language]
     search2 --> filter
     enough -- yes, or no stage left --> cap{Daily cap reached?}
     cap -- yes --> overCap[Tracked as to_review<br/>over daily cap]
-    cap -- no --> prepare[5 Prepare<br/>folder, CV if needed, letter if needed]
+    cap -- no --> preflight[Preflight every portal<br/>ask for all sign-ins at once]
+    preflight --> prepare[5 Prepare<br/>batches of 5, one session per position<br/>max 3 form agents, one per login<br/>folder, CV, letter, every section filled]
+    prepare -. missing facts .-> askFacts[Ask missing facts and consent boxes<br/>in one batch]
+    askFacts -.-> prepare
     prepare --> auto{6 Does the route<br/>have auto_submit on?}
     auto -- no --> ready[Ready: left open<br/>and waiting for your approval]
     auto -- yes --> checks{Every check passes?}
-    checks -- yes --> submit[Submit and wait<br/>for the confirmation]
+    checks -- yes --> submit[Submit, wait for the confirmation,<br/>then the sent steps]
     checks -- no --> blocked[Left open: blocked,<br/>status to_review]
     ready --> log
     submit --> log
@@ -39,7 +43,8 @@ flowchart TD
     final --> reply
     reply -- send ok --> approved[Send that ID only]
     reply -- nothing more --> done([Done])
-    approved --> done
+    approved --> sent[Sent: tracker, folder, close tabs,<br/>archive session, confirmation email]
+    sent --> done
 ```
 
 ## The seven steps
@@ -49,8 +54,8 @@ flowchart TD
 | 1 Load | Check the profile and the files it points to | [run](../modes/run.md) |
 | 2 Sync | Update statuses from email and the boards' own "applied" pages, then draft follow-up emails (a rejection at once, a quiet application after a few days) | [sync](../modes/sync.md) |
 | 3 Search | Run the search plan, one subagent per board. Stage 1 first, later stages only if the first ran dry | [run](../modes/run.md) |
-| 4 Filter and score | Drop, deduplicate, rate, score, route | [run](../modes/run.md) |
-| 5 Prepare | Job folder, CV check (required, optional or not asked) and choice, contact, letter if needed | [run](../modes/run.md) |
+| 4 Filter and score | Drop, deduplicate, rate, score, route, list the knock-outs | [run](../modes/run.md) |
+| 5 Prepare | Preflight every portal and ask for all sign-ins at once. Then batches of 5 jobs, one session per position named after the company, at most three form agents at once and one per shared login, missing facts asked in one batch: job folder, CV check (required, optional or not asked) and choice, contact, letter if needed, form filled but not submitted, then the letter or answers shown for review | [run](../modes/run.md) |
 | 6 Apply | Submit only where the route allows it. Everything else waits | [run](../modes/run.md) |
 | 7 Log and summarise | Tracker, summary with next steps per job (channel, CV, what the letter or email would say, form answers, choices for you), the question for you | [run](../modes/run.md) |
 | after the summary | Edits, approvals, feedback | [review](../modes/review.md) |
