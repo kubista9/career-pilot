@@ -48,7 +48,7 @@ Your data stays in `~/career-pilot-data` (or `CAREER_PILOT_DATA_DIR`). The repo 
 make check
 ```
 
-Runs lint, format check, type check, tests and the privacy check. See [AGENTS.md](AGENTS.md) for the repo rules.
+Runs lint, format check, type check, tests and the privacy check. See [AGENTS.md](AGENTS.md) for the repo rules. Also see [CONTRIBUTING](CONTRIBUTING.md), [SECURITY](SECURITY.md) and the [CHANGELOG](CHANGELOG.md).
 
 ## Licence
 
