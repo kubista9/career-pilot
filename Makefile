@@ -1,4 +1,4 @@
-.PHONY: check lint format typecheck test privacy
+.PHONY: check lint format typecheck test privacy hooks
 
 ## Run every local check (CI runs the same set).
 check: lint typecheck test privacy
@@ -20,3 +20,7 @@ test:
 ## Private files and values must never reach the repo.
 privacy:
 	uv run career-pilot privacy-check
+
+## Opt-in: run `make check` before every push.
+hooks:
+	git config core.hooksPath .githooks

@@ -1,0 +1,6 @@
+#!/bin/sh
+# Opt-in: enable with `make hooks`. Stops the push if the checks fail.
+make check || {
+  echo "pre-push: make check failed, push stopped." >&2
+  exit 1
+}
