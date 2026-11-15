@@ -13,8 +13,8 @@ There are two different approvals. A letter OK approves the text. Only a send OK
 | An edit ("put this in the second paragraph", "more about my last project") | Change the letter as asked, keeping the user's wording and the letter rules. Run `career-pilot letter-check` and check the facts again. Show the new text in the chat. Wait for the next explicit OK for this ID. An edit is **never** an approval |
 | A plan confirmation (when `letters.plan_first` is true) | Write the full letter from the confirmed plan |
 | An answer to the next steps (a choice, a change to a point, an answer to a form question) | Update the plan and the proposed answers, then write the letter, email or answers from them and show them. This is not an approval: wait for the explicit OK for this ID |
-| A letter OK ("1. letter ok", "1. looks good", or a plain "1. okay") | The text is approved. Finalize the letter (below). Nothing is sent. Ask once whether to send |
-| A send OK ("ok send", "ok submit", "send the application") | Do the sending steps (below) for that ID only |
+| A letter OK ("1. letter ok", "1. looks good", a plain "1. okay", "continue", "proceed" or "continue applying") | The text is approved. Finalize the letter (below). Nothing is sent. Ask once whether to send |
+| A send OK ("ok send", "ok submit", "send the application") | Do the sending steps (below) for that ID only. A send OK never covers a consent box, a CAPTCHA or an account step: those wait for the user |
 | A question or a doubt | Answer it. Change nothing |
 | A drop ("skip 4") | Set the row to `to_review` with the note "Dropped by user". Do not submit |
 | Feedback on how the run works ("score these lower", "stop applying to X") | Restate what you understood, answer questions, and collect the feedback. Ask whether to save it. Save preferences to `DATA_DIR/modes/_custom.md` or the profile, never to a file in the repo |
@@ -38,8 +38,8 @@ For every ID, stop and report any failure:
 
 One application at a time.
 
-1. Open the form in a visible tab, fill every field using element references, upload the CV (only if the form takes one) and the final letter (or paste the text), and review.
-2. Stop before a privacy or terms checkbox and ask once whether to tick it. A CAPTCHA, an account or a verification is the user's: hand over, do not work around it.
+1. Open the form in a visible tab, fill every field using element references and following `_shared.md`, "Filling application forms", upload the CV (only if the form takes one) and the final letter (or paste the text), and review.
+2. Stop at every consent box and data-retention choice, quote its wording and ask once; the user ticks or chooses it (`_shared.md`, safety rule 13). A CAPTCHA, an account or a verification is the user's: hand over, do not work around it.
 3. Press the final Send or Submit only after the user's explicit send OK for that ID. Without it, the user presses Send themselves.
 4. For an email application create a draft with the letter as the body, a one-line intro and the CV attached unless the tracker says `not_needed` (or a note to attach it), and tell the user where it is. Send it only on the explicit send OK, one email at a time.
 5. Wait for the site's confirmation.
@@ -48,8 +48,8 @@ An approval for an easy-apply job that failed its checks: if the checks failed b
 
 ## After sending
 
-- If the user sent it themselves, wait for their word before changing anything.
-- Then: status `applied`; letter status `sent` only if a letter was really sent; a note with the date, the CV, the hours, the route and "check for a reply in 7 days"; move the folder if `tracker.status_folders` is on. Close that job's tabs.
+- As soon as the user says it is sent, or the portal or an email confirms it, do everything in `_shared.md`, "When an application is sent", without being asked. If the user sent it themselves, their word is the confirmation.
+- Letter status `sent` only if a letter was really sent. The note holds the date, the CV, the hours, the route and "check for a reply in 7 days".
 - If the user gave new standing facts or answers, add them to the facts file after copying a backup, and say so.
 - Confirm in the chat, per ID.
 
