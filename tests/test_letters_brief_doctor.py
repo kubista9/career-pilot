@@ -114,6 +114,10 @@ def test_brief_has_only_the_keys_of_the_mode() -> None:
     assert "Test Person" not in render_brief(SAMPLE_PROFILE, "search")
 
 
+def test_sync_brief_has_the_letter_rules_source() -> None:
+    assert "sources" in brief_for(SAMPLE_PROFILE, "sync")
+
+
 @pytest.mark.parametrize("mode", sorted(BRIEF_KEYS))
 def test_no_brief_ever_contains_the_privacy_section(mode: str) -> None:
     assert "privacy" not in brief_for(SAMPLE_PROFILE, mode)
