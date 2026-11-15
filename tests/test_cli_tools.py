@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
 
+from career_pilot import tracker
 from career_pilot.cli import (
     EXIT_LETTER,
     EXIT_OK,
@@ -223,6 +225,66 @@ def test_followups_command_and_followup_record(
     _, out = run(capsys, "tracker", "followups")
     assert "Rejected, no follow-up yet (ask for feedback): 0" in out
     assert "nothing for 5+ days" in out
+
+
+def followup_fixture(data_dir: Path) -> None:
+    """A profile with follow-up defaults, and rows that each default should leave out."""
+    profile = {
+        **SAMPLE_PROFILE,
+        "followup": {"skip_routes": ["easy_apply"], "rejected_within_days": 14},
+    }
+    write_profile(data_dir, profile)
+    csv_path = data_dir / "tracker" / "applications.csv"
+    old = date.today() - timedelta(days=60)
+    quiet = date.today() - timedelta(days=10)
+    rows = [
+        {"job_id": "b:1", "status": "rejected", "company": "Acme", "role": "Dev"},
+        {
+            "job_id": "b:2",
+            "status": "applied",
+            "route": "easy_apply",
+            "company": "Beta",
+            "role": "Dev",
+        },
+        {
+            "job_id": "b:3",
+            "status": "applied",
+            "route": "strong",
+            "company": "Gamma",
+            "role": "Dev",
+        },
+    ]
+    for row, day in zip(rows, (old, quiet, quiet), strict=True):
+        tracker.add(csv_path, row, today=day)
+
+
+def due_ids(out: str) -> list[str]:
+    due = json.loads(out)
+    return [row["job_id"] for row in due["rejected"] + due["stale"]]
+
+
+def test_followups_days_keeps_the_profile_skip_routes_and_rejected_window(
+    data_dir: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    followup_fixture(data_dir)
+
+    _, out = run(capsys, "tracker", "followups", "--json")
+    assert due_ids(out) == ["b:3"]
+
+    _, out = run(capsys, "tracker", "followups", "--days", "5", "--json")
+    assert due_ids(out) == ["b:3"]
+
+
+def test_followups_flags_override_the_profile_defaults(
+    data_dir: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    followup_fixture(data_dir)
+
+    _, out = run(capsys, "tracker", "followups", "--days", "5", "--skip-route", "strong", "--json")
+    assert due_ids(out) == ["b:2"]
+
+    _, out = run(capsys, "tracker", "followups", "--rejected-within", "90", "--json")
+    assert due_ids(out) == ["b:1", "b:3"]
 
 
 @pytest.mark.parametrize("argv", [(), ("--company", "Acme"), ("--role", "Dev")])

@@ -310,6 +310,10 @@ def last_activity(row: Row) -> date | None:
     return max(days) if days else None
 
 
+MAX_STATUS_REQUESTS = 2
+FOLLOWUP_NOTE = "Follow-up email"  # the text `mark_followup` writes into the notes
+
+
 def followups_due(
     rows: Iterable[Row],
     stale_days: int,
@@ -325,7 +329,8 @@ def followups_due(
     rejection is left out, because asking weeks later is no use.
     `stale`: applied and nothing has happened for `stale_days` days (ask for the status).
     Jobs on a route in `skip_routes` (for example easy apply, which has no contact) never count.
-    A follow-up email resets the clock, so a job is never asked twice in a row.
+    A follow-up email resets the clock, so a job is never asked twice in a row. An applied job
+    that already got `MAX_STATUS_REQUESTS` follow-up emails is not listed again.
     """
     now = today or date.today()
     skipped = set(skip_routes)
@@ -341,7 +346,12 @@ def followups_due(
             )
             if recent:
                 rejected.append(row)
-        elif row["status"] == "applied" and last is not None and (now - last).days >= stale_days:
+        elif (
+            row["status"] == "applied"
+            and row["notes"].count(FOLLOWUP_NOTE) < MAX_STATUS_REQUESTS
+            and last is not None
+            and (now - last).days >= stale_days
+        ):
             stale.append(row)
     return {"rejected": rejected, "stale": stale}
 
@@ -357,7 +367,7 @@ def mark_followup(path: Path, job_id: str, *, note: str = "", today: date | None
         stamp = (today or date.today()).isoformat()
         row["followup"] = stamp
         row["updated"] = stamp
-        entry = f"Follow-up email {stamp}" + (f": {note}" if note else "")
+        entry = f"{FOLLOWUP_NOTE} {stamp}" + (f": {note}" if note else "")
         row["notes"] = f"{row['notes']}; {entry}" if row["notes"] else entry
         save(path, rows)
     return row

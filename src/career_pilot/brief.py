@@ -32,7 +32,16 @@ BRIEF_KEYS: dict[str, tuple[str, ...]] = {
         "sync",
         "adapters",
     ),
-    "sync": ("candidate", "boards", "sync", "followup", "letters", "tracker", "adapters"),
+    "sync": (
+        "candidate",
+        "sources",
+        "boards",
+        "sync",
+        "followup",
+        "letters",
+        "tracker",
+        "adapters",
+    ),
     "review": (
         "candidate",
         "sources",

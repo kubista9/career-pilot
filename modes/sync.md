@@ -49,7 +49,7 @@ For each company, compare the tracker and the folders with the email receipts an
 Run `career-pilot tracker followups`. It lists two groups:
 
 - **Rejected, no follow-up yet.** The company said no. This is due at once: draft it in the same sync that found the rejection, do not wait. Draft a very short email that thanks them, names the role and the application date, and asks why the application was not chosen and what could be improved. Only recent rejections are listed (`followup.rejected_within_days`).
-- **Applied, gone quiet.** The status is `applied` and nothing has happened for `followup.stale_days` days (default 5). Draft a short email that names the role and the application date and asks kindly for the status. Ask at most twice per application: look for "Follow-up email" in the notes.
+- **Applied, gone quiet.** The status is `applied` and nothing has happened for `followup.stale_days` days (default 5). Draft a short email that names the role and the application date and asks kindly for the status. Ask at most twice per application. The command enforces this by counting "Follow-up email" in the notes, so a job that was asked twice is no longer listed.
 
 Do this after steps 1 to 4, so a reply that just arrived has already updated the tracker and the job no longer counts as stale. In `sync dry` only list the jobs. Jobs on a route in `followup.skip_routes` are left out by the command.
 
