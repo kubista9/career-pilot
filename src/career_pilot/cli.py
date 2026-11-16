@@ -84,7 +84,15 @@ def privacy_check(repo_root: Path) -> int:
     else:
         print("Private files: OK - none are tracked or addable")
 
-    findings = scan_content(repo_root, local_forbidden_terms(data_dir))
+    profile_problem = False
+    try:
+        terms = local_forbidden_terms(data_dir)
+    except ProfileError as error:
+        print(f"Profile: PROBLEM - {error} Forbidden terms were not checked.")
+        profile_problem = True
+        terms = []
+
+    findings = scan_content(repo_root, terms)
     if findings:
         print("File contents: PROBLEM - private-looking values (the values are not shown):")
         for finding in findings:
@@ -93,7 +101,7 @@ def privacy_check(repo_root: Path) -> int:
     else:
         print("File contents: OK - no phone numbers, emails, home paths or real ids")
 
-    return status
+    return status or (EXIT_PROFILE if profile_problem else EXIT_OK)
 
 
 def setup_check(create: bool, repo_only: bool, repo_root: Path) -> int:
