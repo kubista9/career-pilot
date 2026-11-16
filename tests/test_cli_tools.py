@@ -8,6 +8,7 @@ import pytest
 
 from career_pilot import tracker
 from career_pilot.cli import (
+    EXIT_INPUT,
     EXIT_LETTER,
     EXIT_OK,
     EXIT_PROFILE,
@@ -176,6 +177,45 @@ def test_letter_check_reads_the_new_limits_and_patterns_from_the_profile(
     assert "1 paragraphs, the minimum is 3" in out
     assert "paragraph 1 is" in out
     assert "forbidden pattern 'https?://'" in out
+
+
+def test_letter_check_reports_bad_input_in_one_line(
+    data_dir: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    binary = tmp_path / "letter.txt"
+    binary.write_bytes(b"Dear Team,\n\n\xff\xfe not utf-8")
+
+    for target in (tmp_path / "missing.txt", tmp_path, binary):
+        code, out = run(capsys, "letter-check", str(target))
+        assert code == EXIT_INPUT
+        assert out.startswith("Letter check: PROBLEM - cannot read ")
+        assert len(out.splitlines()) == 1
+
+
+def test_letter_check_reads_standard_input_as_utf8(
+    data_dir: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import io
+
+    para = "Ich arbeite gern an kleinen, zuverlässigen Diensten für echte Nutzer. " * 2
+    monkeypatch.setattr("sys.stdin", io.TextIOWrapper(io.BytesIO(para.encode()), encoding="ascii"))
+
+    code, out = run(capsys, "letter-check", "-")
+
+    assert code == EXIT_OK
+    assert f"paragraphs: {len(para.strip())}" in out
+
+
+def test_letter_check_prints_the_characters_per_paragraph(
+    data_dir: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    letter = tmp_path / "letter.txt"
+    letter.write_text("A" * 60 + "\n\n" + "B" * 45 + "\n")
+
+    code, out = run(capsys, "letter-check", str(letter), "--min-paragraph-chars", "50")
+
+    assert code == EXIT_LETTER
+    assert out.splitlines()[-1] == "  paragraphs: 60, 45"
 
 
 def test_letter_check_reports_an_invalid_pattern(

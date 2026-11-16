@@ -8,7 +8,7 @@ import pytest
 
 from career_pilot.brief import BRIEF_KEYS, brief_for, render_brief
 from career_pilot.doctor import example_values, missing_keys, run_doctor
-from career_pilot.letters import check_letter
+from career_pilot.letters import body_paragraphs, check_letter
 from career_pilot.profile import ProfileError, data_path, load_profile, lookup, optional_profile
 from tests.conftest import SAMPLE_PROFILE, write_profile
 
@@ -43,6 +43,46 @@ def test_greeting_reference_line_and_sign_off_do_not_count_as_paragraphs() -> No
 
     assert check_letter(text) == []
     assert check_letter(letter(5)) == ["5 paragraphs, the maximum is 4"]
+
+
+LONG = "I would like to work on your platform because it solves a real problem. " * 4
+SHORT_CLOSING = "Thanks for reading, call me."
+
+
+def test_a_short_closing_paragraph_still_counts() -> None:
+    text = f"{LONG}\n\n{LONG}\n\n{SHORT_CLOSING}\n"
+    wrapped = f"3 November 2026\n\nDear Team,\n\n{text}\nKind regards,\nAlex Example\n"
+
+    for letter_text in (text, wrapped):
+        assert check_letter(letter_text, max_paragraphs=2) == ["3 paragraphs, the maximum is 2"]
+        assert check_letter(letter_text, min_paragraph_chars=250) == [
+            f"paragraph 3 is {len(SHORT_CLOSING)} characters, the minimum is 250"
+        ]
+
+
+@pytest.mark.parametrize(
+    ("greeting", "sign_off"),
+    [
+        ("Hello team,", "Kind regards,\nAlex Example"),
+        ("Beste Anna,", "Met vriendelijke groet,\nAlex Example"),
+        ("Estimado equipo:", "Un saludo,\nAlex Example"),
+        ("Hi Sam,", "Thanks,\nAlex"),
+    ],
+)
+def test_greetings_and_sign_offs_in_any_language_are_not_body(greeting: str, sign_off: str) -> None:
+    assert body_paragraphs(f"{greeting}\n\n{LONG}\n\n{LONG}\n\n{sign_off}") == [LONG.strip()] * 2
+
+
+def test_a_greeting_glued_to_the_first_paragraph_is_split_off() -> None:
+    assert body_paragraphs(f"Dear Team,\n{LONG}\n\n{LONG}") == [LONG.strip(), LONG.strip()]
+
+
+def test_sign_off_words_in_the_middle_or_a_long_sign_off() -> None:
+    middle = f"{LONG}\n\nRegards to the whole team, I look forward to hearing from you.\n\n{LONG}"
+    assert len(body_paragraphs(middle)) == 3
+    long_off = f"{LONG}\n\nYours faithfully and with many thanks to all,\nAlex Example"
+    assert body_paragraphs(long_off) == [LONG.strip()]
+    assert body_paragraphs(f"{LONG}\n\nKind regards,\n\nAlex Example") == [LONG.strip()]
 
 
 def test_paragraph_count_and_size_minimums() -> None:
@@ -187,3 +227,21 @@ def test_doctor_is_clean_when_everything_exists(tmp_path: Path) -> None:
 def test_missing_keys_and_example_values_helpers() -> None:
     assert missing_keys(SAMPLE_PROFILE) == []
     assert example_values({"a": {"b": ["Example Person"]}, "c": "fine"}) == ["a.b.0"]
+
+
+def test_doctor_resolves_relative_and_home_paths_in_the_data_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    data = tmp_path / "data"
+    (data / "cv").mkdir(parents=True)
+    (data / "cv" / "cv-software.pdf").write_text("x")
+    (data / "about.md").write_text("x")
+    (data / "cv.md").write_text("x")
+    (tmp_path / "rules.md").write_text("x")
+    profile: dict[str, Any] = copy.deepcopy(SAMPLE_PROFILE)
+    profile["sources"] = {"facts": "about.md", "letter_rules": "~/rules.md", "cv_dir": "cv"}
+    write_profile(data, profile)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.chdir(tmp_path)
+
+    assert run_doctor(data) == []
