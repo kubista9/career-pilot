@@ -32,8 +32,13 @@ def load_profile(data_dir: Path) -> Profile:
         )
     try:
         loaded = yaml.safe_load(path.read_text())
+    except UnicodeDecodeError as error:
+        raise ProfileError(f"{display_path(path)} is not valid UTF-8 text.") from error
     except yaml.YAMLError as error:
-        raise ProfileError(f"{display_path(path)} is not valid YAML: {error}") from error
+        # Line number only: the error text can quote the broken line, which may be private.
+        mark = getattr(error, "problem_mark", None)
+        where = f" at line {mark.line + 1}" if mark else ""
+        raise ProfileError(f"{display_path(path)} is not valid YAML{where}.") from error
     if not isinstance(loaded, dict):
         raise ProfileError(f"{display_path(path)} must be a YAML mapping of keys and values.")
     return loaded

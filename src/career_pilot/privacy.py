@@ -17,6 +17,8 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
+from career_pilot.profile import ProfileError, load_profile, profile_path
+
 # Keep in sync with the PRIVATE DATA section of .gitignore.
 PRIVATE_PATTERNS: tuple[str, ...] = (
     ".env",
@@ -197,15 +199,19 @@ def scan_content(repo_root: Path, forbidden_terms: Iterable[str] = ()) -> list[F
 
 
 def local_forbidden_terms(data_dir: Path) -> list[str]:
-    """Terms from privacy.forbidden_terms in the profile in the data dir, if there is one."""
-    import yaml  # local import: only needed when a profile exists
+    """Terms from privacy.forbidden_terms in the profile in the data dir, if there is one.
 
-    profile = data_dir / "config" / "profile.yml"
-    if not profile.is_file():
+    No profile means no terms. Raises ProfileError when the profile cannot be read or the
+    key is not a list of words or numbers, so a typo never turns the check off silently.
+    """
+    if not profile_path(data_dir).is_file():
         return []
-    loaded = yaml.safe_load(profile.read_text())
-    if not isinstance(loaded, dict):
+    privacy = load_profile(data_dir).get("privacy")
+    if not isinstance(privacy, dict) or "forbidden_terms" not in privacy:
         return []
-    privacy = loaded.get("privacy")
-    terms = privacy.get("forbidden_terms") if isinstance(privacy, dict) else None
-    return [str(term) for term in terms] if isinstance(terms, list) else []
+    terms = privacy["forbidden_terms"]
+    if not isinstance(terms, list) or not all(
+        isinstance(term, (str, int, float)) for term in terms
+    ):
+        raise ProfileError("privacy.forbidden_terms must be a list of words or numbers.")
+    return [str(term) for term in terms]

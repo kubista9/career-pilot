@@ -21,6 +21,10 @@ The prompts never contain values. They name a key (`answers.start_date`) and the
 - **File contents**: phone numbers (also in national format, starting with 0 or an area code in brackets), email addresses (except `example.*`), home folder paths, and real-looking IDs (fake ones start with zeros).
 - **Your own words**: list names, streets or employers under `privacy.forbidden_terms` in your profile. They are checked in file names and file contents on your machine only. Never put them in a file in the repo.
 
+A file over 1 MB cannot be scanned, so it fails the check. Split it or move it out of the repo.
+
+If your profile cannot be read, or `privacy.forbidden_terms` is not a list, the check prints `Profile: PROBLEM`, still scans without your terms and fails with exit code 3 (code 1 if it also found private files or values). The message gives the line number, never the profile text.
+
 The check prints the file, the line and the kind of finding. It never prints the matched text.
 
 ## In CI
