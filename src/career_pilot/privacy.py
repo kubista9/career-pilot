@@ -17,6 +17,8 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
+from career_pilot.profile import ProfileError, load_profile, profile_path
+
 # Keep in sync with the PRIVATE DATA section of .gitignore.
 PRIVATE_PATTERNS: tuple[str, ...] = (
     ".env",
@@ -67,8 +69,17 @@ ALLOWED_FILES: tuple[str, ...] = (".env.example",)
 SKIP_SUFFIXES: tuple[str, ...] = (".lock", ".png", ".jpg", ".jpeg", ".gif", ".ico")
 MAX_SCAN_BYTES = 1_000_000
 
-PHONE = re.compile(r"\+\d[\d \-()]{7,}\d")
-EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@([A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+)")
+# International (a plus sign and 8 or more digits) or national: 10-11 digits starting with 0,
+# or an area code in brackets followed by 7-8 digits.
+# National numbers must stand alone: no letter, digit, dot, colon, slash or sign before them
+# (ids, versions, hashes, dates, paths) and no letter or digit after them.
+PHONE = re.compile(
+    r"\+\d[\d \-()]{7,}\d"
+    r"|(?<![\w.:/#=+-])(?<!\d[ -])"
+    r"(?:0(?:[ -]?\d){9,10}|\(\d{2,4}\)[ -]?\d{3,4}[ -]?\d{4})(?!\w)"
+)
+# Bounded quantifiers keep the scan linear on very long lines.
+EMAIL = re.compile(r"[A-Za-z0-9._%+-]{1,64}@([A-Za-z0-9-]{1,63}(?:\.[A-Za-z0-9-]{1,63})+)")
 HOME_PATH = re.compile(r"/(?:Users|home)/([A-Za-z0-9._-]+)/")
 UUID = re.compile(
     r"\b([0-9a-fA-F]{8})-([0-9a-fA-F]{4})-([0-9a-fA-F]{4})-([0-9a-fA-F]{4})-[0-9a-fA-F]{12}\b"
@@ -176,6 +187,7 @@ def scan_content(repo_root: Path, forbidden_terms: Iterable[str] = ()) -> list[F
         if name.endswith(SKIP_SUFFIXES) or not path.is_file():
             continue
         if path.stat().st_size > MAX_SCAN_BYTES:
+            findings.append(Finding(name, 0, "file too large to scan"))
             continue
         try:
             text = path.read_text()
@@ -187,15 +199,19 @@ def scan_content(repo_root: Path, forbidden_terms: Iterable[str] = ()) -> list[F
 
 
 def local_forbidden_terms(data_dir: Path) -> list[str]:
-    """Terms from privacy.forbidden_terms in the profile in the data dir, if there is one."""
-    import yaml  # local import: only needed when a profile exists
+    """Terms from privacy.forbidden_terms in the profile in the data dir, if there is one.
 
-    profile = data_dir / "config" / "profile.yml"
-    if not profile.is_file():
+    No profile means no terms. Raises ProfileError when the profile cannot be read or the
+    key is not a list of words or numbers, so a typo never turns the check off silently.
+    """
+    if not profile_path(data_dir).is_file():
         return []
-    loaded = yaml.safe_load(profile.read_text())
-    if not isinstance(loaded, dict):
+    privacy = load_profile(data_dir).get("privacy")
+    if not isinstance(privacy, dict) or "forbidden_terms" not in privacy:
         return []
-    privacy = loaded.get("privacy")
-    terms = privacy.get("forbidden_terms") if isinstance(privacy, dict) else None
-    return [str(term) for term in terms] if isinstance(terms, list) else []
+    terms = privacy["forbidden_terms"]
+    if not isinstance(terms, list) or not all(
+        isinstance(term, (str, int, float)) for term in terms
+    ):
+        raise ProfileError("privacy.forbidden_terms must be a list of words or numbers.")
+    return [str(term) for term in terms]
