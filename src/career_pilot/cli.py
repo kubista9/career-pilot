@@ -49,6 +49,7 @@ EXIT_DATA_DIR = 2
 EXIT_PROFILE = 3
 EXIT_TRACKER = 4
 EXIT_LETTER = 5
+EXIT_INPUT = 6
 DEFAULT_STALE_DAYS = 5
 
 
@@ -170,7 +171,13 @@ LIMIT_OPTIONS = (
 
 
 def letter_check(file: str, limits: dict[str, int]) -> int:
-    text = sys.stdin.read() if file == "-" else Path(file).expanduser().read_text()
+    try:
+        raw = sys.stdin.buffer.read() if file == "-" else Path(file).expanduser().read_bytes()
+        text = raw.decode("utf-8")
+    except (OSError, UnicodeDecodeError) as error:
+        reason = "is not UTF-8 text" if isinstance(error, UnicodeDecodeError) else error.strerror
+        print(f"Letter check: PROBLEM - cannot read {file}: {reason}")
+        return EXIT_INPUT
     try:
         profile = optional_profile(resolve_data_dir())
     except ProfileError as error:
@@ -193,13 +200,15 @@ def letter_check(file: str, limits: dict[str, int]) -> int:
     except re.error as error:
         print(f"Letter check: PROBLEM - a forbidden pattern in the profile is not valid: {error}")
         return EXIT_PROFILE
+    paragraphs = body_paragraphs(text)
+    sizes = "  paragraphs: " + ", ".join(str(len(p)) for p in paragraphs)
     if not issues:
-        length = len("\n\n".join(body_paragraphs(text)))
-        print(f"Letter check: OK (body of {length} characters)")
+        print(f"Letter check: OK (body of {len('\n\n'.join(paragraphs))} characters)\n{sizes}")
         return EXIT_OK
     print("Letter check: PROBLEM")
     for issue in issues:
         print(f"  - {issue}")
+    print(sizes)
     return EXIT_LETTER
 
 
