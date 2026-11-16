@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from career_pilot.paths import display_path
-from career_pilot.profile import Profile, ProfileError, load_profile, lookup
+from career_pilot.profile import Profile, ProfileError, data_path, load_profile, lookup
 
 # Keys the modes cannot work without.
 REQUIRED_KEYS: tuple[str, ...] = (
@@ -64,12 +64,12 @@ def check_files(profile: Profile, data_dir: Path) -> list[Issue]:
     issues: list[Issue] = []
     for key in ("sources.facts", "sources.letter_rules"):
         value = lookup(profile, key)
-        if value and not Path(str(value)).expanduser().is_file():
+        if value and not data_path(data_dir, value, "").is_file():
             issues.append(Issue("warning", f"{key} points to a file that does not exist"))
     cv_dir_value = lookup(profile, "sources.cv_dir")
     cvs = lookup(profile, "cvs", [])
     if cv_dir_value and isinstance(cvs, list):
-        cv_dir = Path(str(cv_dir_value)).expanduser()
+        cv_dir = data_path(data_dir, cv_dir_value, "")
         for cv in cvs:
             name = cv.get("file") if isinstance(cv, dict) else None
             if name and not (cv_dir / str(name)).is_file():

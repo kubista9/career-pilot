@@ -227,3 +227,21 @@ def test_doctor_is_clean_when_everything_exists(tmp_path: Path) -> None:
 def test_missing_keys_and_example_values_helpers() -> None:
     assert missing_keys(SAMPLE_PROFILE) == []
     assert example_values({"a": {"b": ["Example Person"]}, "c": "fine"}) == ["a.b.0"]
+
+
+def test_doctor_resolves_relative_and_home_paths_in_the_data_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    data = tmp_path / "data"
+    (data / "cv").mkdir(parents=True)
+    (data / "cv" / "cv-software.pdf").write_text("x")
+    (data / "about.md").write_text("x")
+    (data / "cv.md").write_text("x")
+    (tmp_path / "rules.md").write_text("x")
+    profile: dict[str, Any] = copy.deepcopy(SAMPLE_PROFILE)
+    profile["sources"] = {"facts": "about.md", "letter_rules": "~/rules.md", "cv_dir": "cv"}
+    write_profile(data, profile)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.chdir(tmp_path)
+
+    assert run_doctor(data) == []
