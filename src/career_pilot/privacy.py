@@ -67,8 +67,17 @@ ALLOWED_FILES: tuple[str, ...] = (".env.example",)
 SKIP_SUFFIXES: tuple[str, ...] = (".lock", ".png", ".jpg", ".jpeg", ".gif", ".ico")
 MAX_SCAN_BYTES = 1_000_000
 
-PHONE = re.compile(r"\+\d[\d \-()]{7,}\d")
-EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@([A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+)")
+# International (a plus sign and 8 or more digits) or national: 10-11 digits starting with 0,
+# or an area code in brackets followed by 7-8 digits.
+# National numbers must stand alone: no letter, digit, dot, colon, slash or sign before them
+# (ids, versions, hashes, dates, paths) and no letter or digit after them.
+PHONE = re.compile(
+    r"\+\d[\d \-()]{7,}\d"
+    r"|(?<![\w.:/#=+-])(?<!\d[ -])"
+    r"(?:0(?:[ -]?\d){9,10}|\(\d{2,4}\)[ -]?\d{3,4}[ -]?\d{4})(?!\w)"
+)
+# Bounded quantifiers keep the scan linear on very long lines.
+EMAIL = re.compile(r"[A-Za-z0-9._%+-]{1,64}@([A-Za-z0-9-]{1,63}(?:\.[A-Za-z0-9-]{1,63})+)")
 HOME_PATH = re.compile(r"/(?:Users|home)/([A-Za-z0-9._-]+)/")
 UUID = re.compile(
     r"\b([0-9a-fA-F]{8})-([0-9a-fA-F]{4})-([0-9a-fA-F]{4})-([0-9a-fA-F]{4})-[0-9a-fA-F]{12}\b"
@@ -176,6 +185,7 @@ def scan_content(repo_root: Path, forbidden_terms: Iterable[str] = ()) -> list[F
         if name.endswith(SKIP_SUFFIXES) or not path.is_file():
             continue
         if path.stat().st_size > MAX_SCAN_BYTES:
+            findings.append(Finding(name, 0, "file too large to scan"))
             continue
         try:
             text = path.read_text()

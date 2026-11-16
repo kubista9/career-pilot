@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import subprocess
+import time
 from pathlib import Path
 
 import pytest
 
 from career_pilot.privacy import (
+    MAX_SCAN_BYTES,
     Finding,
     is_private_path,
     line_findings,
@@ -199,3 +201,61 @@ def test_local_forbidden_terms_come_from_the_profile(tmp_path: Path) -> None:
     write(tmp_path / "config" / "profile.yml", "privacy:\n  forbidden_terms: [Exampleville, 'x']\n")
 
     assert local_forbidden_terms(tmp_path) == ["Exampleville", "x"]
+
+
+# --- national phone numbers, long lines, size limit ------------------------------------------
+
+NATIONAL_NUMBERS = [
+    "06 " + "1234 5678",
+    "06" + "12345678",
+    "(555) " + "123-4567",
+    "020-" + "1234567",
+    "+31 6 " + "1234 5678",
+]
+
+NOT_PHONE_NUMBERS = [
+    "+00 0 0000 0000",
+    "00 0000 0000",
+    "2026-11-13",
+    "2026-10-30T10:00:00",
+    "1.2.3",
+    "2026.11.13",
+    "6.0.12.20261016",
+    "linkedin:0000000001",
+    "board:0000000004",
+    "indeed:aaaaaaaa00000001",
+    "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "https://example.com/badge/0000",
+    "https://example.com/a/0123456789",
+    "commit 0123456789abcdef0123456789abcdef01234567",
+    "289 passed",
+    "version 10 0123456789 table",
+]
+
+
+@pytest.mark.parametrize("number", NATIONAL_NUMBERS)
+def test_phone_numbers_in_national_format_are_flagged(number: str) -> None:
+    assert line_findings(f"call {number} today") == ["phone number"]
+    assert line_findings(number) == ["phone number"]
+
+
+@pytest.mark.parametrize("text", NOT_PHONE_NUMBERS)
+def test_numbers_that_are_not_phones_are_not_flagged(text: str) -> None:
+    assert line_findings(text) == []
+    assert line_findings(f"see {text} here") == []
+
+
+@pytest.mark.parametrize("middle", ["", "@"])
+@pytest.mark.parametrize("filler", ["a", "0", "a1 ", "+1 ", "/Users/", "-"])
+def test_line_findings_stay_fast_on_a_one_megabyte_line(filler: str, middle: str) -> None:
+    half = filler * (500_000 // len(filler))
+    start = time.perf_counter()
+    line_findings(half + middle + half)
+    assert time.perf_counter() - start < 2
+
+
+def test_file_too_large_to_scan_is_a_finding(temp_repo: Path) -> None:
+    write(temp_repo / "docs" / "big.md", "a" * (MAX_SCAN_BYTES + 1))
+    write(temp_repo / "docs" / "big.png", "a" * (MAX_SCAN_BYTES + 1))
+
+    assert scan_content(temp_repo) == [Finding("docs/big.md", 0, "file too large to scan")]
