@@ -455,6 +455,31 @@ def test_private_files_and_folders_are_created_owner_only(csv_path: Path, tmp_pa
     assert mode(applications / "applied" / "2026-11") == 0o700
 
 
+def test_header_only_tracker_keeps_hand_added_columns(csv_path: Path) -> None:
+    csv_path.parent.mkdir(parents=True)
+    csv_path.write_text(",".join([*tracker.FIELDS, "my_notes"]) + "\n")
+
+    add_role(csv_path, "b:1", "Acme Example", "Dev")
+
+    assert csv_path.read_text().splitlines()[0].endswith(",notes,my_notes")
+    assert tracker.load(csv_path)[0]["my_notes"] == ""
+
+
+def test_one_word_titles_are_not_similar(csv_path: Path) -> None:
+    add_role(csv_path, "b:1", "Acme Example", "Senior Backend Developer")
+    add_role(csv_path, "b:2", "Acme Example", "Junior Data Engineer")
+    rows = tracker.load(csv_path)
+
+    assert tracker.find(rows, company="Acme Example", role="Developer") == []
+    assert tracker.find(rows, company="Acme Example", role="Data") == []
+    for role, job_id in (
+        ("Junior Data Engineer (EN)", "b:2"),
+        ("Senior Backend Developer - Remote", "b:1"),
+    ):
+        [(row, reason)] = tracker.find(rows, company="Acme Example", role=role)
+        assert row["job_id"] == job_id and reason == tracker.SIMILAR
+
+
 def test_update_changes_fields_appends_notes_and_sets_the_date(csv_path: Path) -> None:
     add(csv_path, notes="first")
     fields = {

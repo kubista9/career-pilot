@@ -340,11 +340,23 @@ def test_tracker_find_needs_a_job_id_or_company_and_role(
 def test_tracker_reports_similar_roles_as_warnings(
     data_dir: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    run(capsys, "tracker", "add", "--job-id", "b:1", "--company", "Acme", "--role", "Developer")
+    run(
+        capsys,
+        "tracker",
+        "add",
+        "--job-id",
+        "b:1",
+        "--company",
+        "Acme",
+        "--role",
+        "Software Developer",
+    )
 
-    code, out = run(capsys, "tracker", "find", "--company", "Acme", "--role", "Senior Developer")
+    code, out = run(
+        capsys, "tracker", "find", "--company", "Acme", "--role", "Software Developer (EN)"
+    )
     assert code == EXIT_OK
-    assert out.startswith("similar: b:1, Acme, Developer")
+    assert out.startswith("similar: b:1, Acme, Software Developer")
 
     code, out = run(
         capsys,
@@ -355,7 +367,7 @@ def test_tracker_reports_similar_roles_as_warnings(
         "--company",
         "Acme",
         "--role",
-        "Senior Developer",
+        "Software Developer (EN)",
     )
     assert code == EXIT_OK
     lines = out.splitlines()

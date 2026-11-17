@@ -94,6 +94,16 @@ def unescape_cell(value: str) -> str:
     return value[1:] if value.startswith("'") and escape_cell(value[1:]) == value else value
 
 
+def header_extras(path: Path) -> list[str]:
+    """Columns in the file's header that are not known ones (kept even with no rows)."""
+    if not path.is_file():
+        return []
+    with path.open(newline="", encoding="utf-8-sig") as handle:
+        return [
+            name for name in csv.DictReader(handle).fieldnames or () if name and name not in FIELDS
+        ]
+
+
 def load(path: Path) -> list[Row]:
     """All rows, or an empty list if the tracker does not exist yet.
 
@@ -126,7 +136,11 @@ def save(path: Path, rows: Iterable[Mapping[str, str]]) -> None:
     """Write all rows (replace the file in one step so a crash cannot leave half a file)."""
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     listed = list(rows)
-    extras = list(dict.fromkeys(name for row in listed for name in row if name not in FIELDS))
+    extras = list(
+        dict.fromkeys(
+            [*header_extras(path), *(name for row in listed for name in row if name not in FIELDS)]
+        )
+    )
     # mkstemp creates the file 0600 with a unique name in the same folder (os.replace is atomic).
     descriptor, name = tempfile.mkstemp(dir=path.parent, prefix=f"{path.name}.", suffix=".tmp")
     temp = Path(name)
@@ -140,6 +154,20 @@ def save(path: Path, rows: Iterable[Mapping[str, str]]) -> None:
     except BaseException:
         temp.unlink(missing_ok=True)
         raise
+
+
+def is_near_copy(first: str, second: str) -> bool:
+    """One normalized title contains the other, and the shorter one has at least two words.
+
+    A one-word title ("Developer", "Data") sits inside too many others to be a useful warning.
+    """
+    one, two = normalize(first), normalize(second)
+    if not one or not two or one == two:
+        return False
+    shorter, short_norm, long_norm = (
+        (first, one, two) if len(one) <= len(two) else (second, two, one)
+    )
+    return short_norm in long_norm and len(re.findall(r"\w+", shorter)) >= 2
 
 
 def find(
@@ -163,7 +191,7 @@ def find(
             other = normalize(row["role"])
             if other == wanted_role:
                 matches.append((row, "same company and role"))
-            elif other and (other in wanted_role or wanted_role in other):
+            elif is_near_copy(row["role"], role or ""):
                 matches.append((row, SIMILAR))
     return matches
 
