@@ -257,6 +257,47 @@ def move_folder(applications_dir: Path, row: Row, new_status: str) -> str:
     return f"moved {old} to {new}"
 
 
+def update(
+    path: Path,
+    job_id: str,
+    *,
+    status: str | None = None,
+    fields: Mapping[str, str] | None = None,
+    note: str = "",
+    applications_dir: Path | None = None,
+    today: date | None = None,
+) -> tuple[Row, str]:
+    """Change a job's status and/or fields in one locked write. Returns the row and a folder line.
+
+    `fields` replace the old value; `note` is appended. Every check runs before anything is
+    changed, so a refused status leaves the other fields as they were.
+    """
+    changes = dict(fields or {})
+    if status is not None:
+        check_choice(status, STATUSES, "status")
+    if "letter_status" in changes:
+        check_choice(changes["letter_status"], LETTER_STATUSES, "letter_status")
+    with locked(path):
+        rows = load(path)
+        matches = [row for row, _ in find(rows, job_id=job_id)]
+        if not matches:
+            raise TrackerError(f"No job with ID {job_id} in the tracker.")
+        row = matches[0]
+        if status in UNLOCKING_STATUSES and row["status"] in LOCKED_STATUSES:
+            raise TrackerError(
+                f"{row['job_id']} is {row['status']}; it is never moved back to {status}."
+            )
+        row.update(changes)
+        if status is not None:
+            row["status"] = status
+        row["updated"] = (today or date.today()).isoformat()
+        if note:
+            row["notes"] = f"{row['notes']}; {note}" if row["notes"] else note
+        save(path, rows)
+    moved = move_folder(applications_dir, row, status) if applications_dir and status else ""
+    return row, moved
+
+
 def set_status(
     path: Path,
     job_id: str,
@@ -267,24 +308,9 @@ def set_status(
     today: date | None = None,
 ) -> tuple[Row, str]:
     """Change a job's status. Returns the row and a line about the folder move, if any."""
-    check_choice(status, STATUSES, "status")
-    with locked(path):
-        rows = load(path)
-        matches = [row for row, _ in find(rows, job_id=job_id)]
-        if not matches:
-            raise TrackerError(f"No job with ID {job_id} in the tracker.")
-        row = matches[0]
-        if row["status"] in LOCKED_STATUSES and status in UNLOCKING_STATUSES:
-            raise TrackerError(
-                f"{row['job_id']} is {row['status']}; it is never moved back to {status}."
-            )
-        row["status"] = status
-        row["updated"] = (today or date.today()).isoformat()
-        if note:
-            row["notes"] = f"{row['notes']}; {note}" if row["notes"] else note
-        save(path, rows)
-    moved = move_folder(applications_dir, row, status) if applications_dir else ""
-    return row, moved
+    return update(
+        path, job_id, status=status, note=note, applications_dir=applications_dir, today=today
+    )
 
 
 def counts(rows: Iterable[Row]) -> dict[str, dict[str, int]]:

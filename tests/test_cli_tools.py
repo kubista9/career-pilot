@@ -361,3 +361,54 @@ def test_tracker_reports_similar_roles_as_warnings(
     lines = out.splitlines()
     assert lines[0].startswith("Added b:2")
     assert lines[1].startswith("Warning: similar") and "b:1" in lines[1]
+
+
+def test_tracker_update_in_one_step(data_dir: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    run(capsys, "tracker", "add", "--job-id", "b:1", "--company", "Acme", "--role", "Dev")
+
+    code, out = run(
+        capsys,
+        "tracker",
+        "update",
+        "b:1",
+        "--status",
+        "applied",
+        "--cv",
+        "cv.pdf",
+        "--letter-status",
+        "sent",
+        "--notes",
+        "2026-11-09, portal receipt",
+    )
+
+    assert code == EXIT_OK
+    assert out == "b:1 updated (applied)\n"
+    [row] = tracker.load(data_dir / "tracker" / "applications.csv")
+    assert (row["status"], row["cv"], row["letter_status"]) == ("applied", "cv.pdf", "sent")
+    assert row["notes"] == "2026-11-09, portal receipt"
+
+
+def test_tracker_update_needs_an_option_and_a_known_job(
+    data_dir: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    run(capsys, "tracker", "add", "--job-id", "b:1", "--company", "Acme", "--role", "Dev")
+
+    code, out = run(capsys, "tracker", "update", "b:1")
+    assert code == EXIT_TRACKER and "at least one of" in out
+
+    code, out = run(capsys, "tracker", "update", "b:404", "--cv", "cv.pdf")
+    assert code == EXIT_TRACKER and "No job with ID b:404" in out
+
+
+def test_tracker_update_moves_the_folder(
+    data_dir: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write_profile(data_dir, {**SAMPLE_PROFILE, "tracker": {"status_folders": True}})
+    run(capsys, "tracker", "add", "--job-id", "b:1", "--company", "Acme", "--role", "Dev")
+    month = tracker.load(data_dir / "tracker/applications.csv")[0]["found"][:7]
+    (data_dir / "applications" / "to-review" / month / "acme").mkdir(parents=True)
+
+    code, out = run(capsys, "tracker", "update", "b:1", "--status", "applied")
+
+    assert code == EXIT_OK and "Folder: moved" in out
+    assert (data_dir / "applications" / "applied" / month / "acme").is_dir()

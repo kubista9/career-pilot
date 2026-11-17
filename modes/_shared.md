@@ -105,7 +105,7 @@ These rules apply to every agent that fills a form, in `run` and in `review`.
 
 An application counts as sent when the user says so, or when the portal or an email confirms it. Then, without being asked:
 
-1. Update the tracker: `career-pilot tracker status <job_id> applied`, the CV and letter status that were really sent, and a note with the date and how it was confirmed. This moves the job's folder when `tracker.status_folders` is on.
+1. Update the tracker in one command: `career-pilot tracker update <job_id> --status applied --cv <file or not_needed> --letter-status <sent or not_needed> --notes "<date>, <how it was confirmed>"`. Use the CV and letter status that were really sent. This moves the job's folder when `tracker.status_folders` is on.
 2. Close that job's tabs.
 3. Archive the job's session, if it has one ("Using subagents").
 4. Look for the confirmation email (read-only, when an email adapter is enabled) and note it in the tracker. If none has arrived, say so; `sync` checks again later.
