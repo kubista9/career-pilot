@@ -251,6 +251,9 @@ def run_tracker(args: argparse.Namespace) -> int:
         return EXIT_TRACKER
 
 
+UPDATE_FIELDS = ("cv", "letter_status", "route", "link")  # replaced; `--notes` is appended
+
+
 def describe_match(row: tracker.Row) -> str:
     return f"{row['job_id']}, {row['company']}, {row['role']} [{row['status']}]"
 
@@ -285,6 +288,24 @@ def tracker_command(args: argparse.Namespace, csv_path: Path, applications_dir: 
             applications_dir=None if args.no_move else applications_dir,
         )
         print(f"{row['job_id']} is now {row['status']}")
+        if moved:
+            print(f"Folder: {moved}")
+    elif args.tracker_command == "update":
+        changes = {f: v for f in UPDATE_FIELDS if (v := getattr(args, f)) is not None}
+        if not (changes or args.notes or args.status):
+            raise tracker.TrackerError(
+                "update needs at least one of --status, --cv, --letter-status, --route, "
+                "--link, --notes."
+            )
+        row, moved = tracker.update(
+            csv_path,
+            args.job_id,
+            status=args.status,
+            fields=changes,
+            note=args.notes or "",
+            applications_dir=None if args.no_move else applications_dir,
+        )
+        print(f"{row['job_id']} updated ({row['status']})")
         if moved:
             print(f"Folder: {moved}")
     elif args.tracker_command == "list":
@@ -351,6 +372,18 @@ def add_tracker_parser(commands: argparse._SubParsersAction[argparse.ArgumentPar
     status.add_argument("status", choices=tracker.STATUSES)
     status.add_argument("--note")
     status.add_argument(
+        "--no-move", action="store_true", help="Do not move the job's folder (status folders on)."
+    )
+
+    change = sub.add_parser("update", help="Change fields and/or the status of a job at once.")
+    change.add_argument("job_id")
+    change.add_argument("--status", choices=tracker.STATUSES)
+    change.add_argument("--cv")
+    change.add_argument("--letter-status", dest="letter_status", choices=tracker.LETTER_STATUSES)
+    change.add_argument("--route")
+    change.add_argument("--link")
+    change.add_argument("--notes", help="Appended to the existing notes.")
+    change.add_argument(
         "--no-move", action="store_true", help="Do not move the job's folder (status folders on)."
     )
 

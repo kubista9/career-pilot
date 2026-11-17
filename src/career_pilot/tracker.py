@@ -94,6 +94,16 @@ def unescape_cell(value: str) -> str:
     return value[1:] if value.startswith("'") and escape_cell(value[1:]) == value else value
 
 
+def header_extras(path: Path) -> list[str]:
+    """Columns in the file's header that are not known ones (kept even with no rows)."""
+    if not path.is_file():
+        return []
+    with path.open(newline="", encoding="utf-8-sig") as handle:
+        return [
+            name for name in csv.DictReader(handle).fieldnames or () if name and name not in FIELDS
+        ]
+
+
 def load(path: Path) -> list[Row]:
     """All rows, or an empty list if the tracker does not exist yet.
 
@@ -126,7 +136,11 @@ def save(path: Path, rows: Iterable[Mapping[str, str]]) -> None:
     """Write all rows (replace the file in one step so a crash cannot leave half a file)."""
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     listed = list(rows)
-    extras = list(dict.fromkeys(name for row in listed for name in row if name not in FIELDS))
+    extras = list(
+        dict.fromkeys(
+            [*header_extras(path), *(name for row in listed for name in row if name not in FIELDS)]
+        )
+    )
     # mkstemp creates the file 0600 with a unique name in the same folder (os.replace is atomic).
     descriptor, name = tempfile.mkstemp(dir=path.parent, prefix=f"{path.name}.", suffix=".tmp")
     temp = Path(name)
@@ -140,6 +154,20 @@ def save(path: Path, rows: Iterable[Mapping[str, str]]) -> None:
     except BaseException:
         temp.unlink(missing_ok=True)
         raise
+
+
+def is_near_copy(first: str, second: str) -> bool:
+    """One normalized title contains the other, and the shorter one has at least two words.
+
+    A one-word title ("Developer", "Data") sits inside too many others to be a useful warning.
+    """
+    one, two = normalize(first), normalize(second)
+    if not one or not two or one == two:
+        return False
+    shorter, short_norm, long_norm = (
+        (first, one, two) if len(one) <= len(two) else (second, two, one)
+    )
+    return short_norm in long_norm and len(re.findall(r"\w+", shorter)) >= 2
 
 
 def find(
@@ -163,7 +191,7 @@ def find(
             other = normalize(row["role"])
             if other == wanted_role:
                 matches.append((row, "same company and role"))
-            elif other and (other in wanted_role or wanted_role in other):
+            elif is_near_copy(row["role"], role or ""):
                 matches.append((row, SIMILAR))
     return matches
 
@@ -257,6 +285,47 @@ def move_folder(applications_dir: Path, row: Row, new_status: str) -> str:
     return f"moved {old} to {new}"
 
 
+def update(
+    path: Path,
+    job_id: str,
+    *,
+    status: str | None = None,
+    fields: Mapping[str, str] | None = None,
+    note: str = "",
+    applications_dir: Path | None = None,
+    today: date | None = None,
+) -> tuple[Row, str]:
+    """Change a job's status and/or fields in one locked write. Returns the row and a folder line.
+
+    `fields` replace the old value; `note` is appended. Every check runs before anything is
+    changed, so a refused status leaves the other fields as they were.
+    """
+    changes = dict(fields or {})
+    if status is not None:
+        check_choice(status, STATUSES, "status")
+    if "letter_status" in changes:
+        check_choice(changes["letter_status"], LETTER_STATUSES, "letter_status")
+    with locked(path):
+        rows = load(path)
+        matches = [row for row, _ in find(rows, job_id=job_id)]
+        if not matches:
+            raise TrackerError(f"No job with ID {job_id} in the tracker.")
+        row = matches[0]
+        if status in UNLOCKING_STATUSES and row["status"] in LOCKED_STATUSES:
+            raise TrackerError(
+                f"{row['job_id']} is {row['status']}; it is never moved back to {status}."
+            )
+        row.update(changes)
+        if status is not None:
+            row["status"] = status
+        row["updated"] = (today or date.today()).isoformat()
+        if note:
+            row["notes"] = f"{row['notes']}; {note}" if row["notes"] else note
+        save(path, rows)
+    moved = move_folder(applications_dir, row, status) if applications_dir and status else ""
+    return row, moved
+
+
 def set_status(
     path: Path,
     job_id: str,
@@ -267,24 +336,9 @@ def set_status(
     today: date | None = None,
 ) -> tuple[Row, str]:
     """Change a job's status. Returns the row and a line about the folder move, if any."""
-    check_choice(status, STATUSES, "status")
-    with locked(path):
-        rows = load(path)
-        matches = [row for row, _ in find(rows, job_id=job_id)]
-        if not matches:
-            raise TrackerError(f"No job with ID {job_id} in the tracker.")
-        row = matches[0]
-        if row["status"] in LOCKED_STATUSES and status in UNLOCKING_STATUSES:
-            raise TrackerError(
-                f"{row['job_id']} is {row['status']}; it is never moved back to {status}."
-            )
-        row["status"] = status
-        row["updated"] = (today or date.today()).isoformat()
-        if note:
-            row["notes"] = f"{row['notes']}; {note}" if row["notes"] else note
-        save(path, rows)
-    moved = move_folder(applications_dir, row, status) if applications_dir else ""
-    return row, moved
+    return update(
+        path, job_id, status=status, note=note, applications_dir=applications_dir, today=today
+    )
 
 
 def counts(rows: Iterable[Row]) -> dict[str, dict[str, int]]:

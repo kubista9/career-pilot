@@ -69,7 +69,7 @@ The tracker is a CSV file, `tracker/applications.csv` in DATA_DIR. Use `career-p
 
 - Job ID: `<board>:<id from the listing URL>`, in lower case, for example `linkedin:123`.
 - Duplicate: same job ID, or same company and role title. A listing already in the tracker, or shown as applied on the board, is skipped without opening it. Keep the easy-apply copy of a cross-posted job.
-- A `similar:` line from `tracker find` means the same company has a job whose title contains this one or the other way round ("Developer" and "Senior Developer"). It is a warning, not a duplicate: the job is not skipped, open it and compare the two, and the summary's "To fix" list names both IDs.
+- A `similar:` line from `tracker find` means the same company has a job whose title contains this one or the other way round, when the shorter title has at least two words ("Junior Data Engineer" and "Junior Data Engineer (EN)"). It is a warning, not a duplicate: the job is not skipped, open it and compare the two, and the summary's "To fix" list names both IDs.
 - Statuses: `to_review` (not sent yet; the notes say why), `applied`, `interview`, `offer`, `rejected`, and `not_relevant` (a job the user's rules say to log but never act on; never prepare or send it). A tracker or an email never moves `rejected`, `interview` or `offer` back.
 - Optional adapters (`adapters` in the profile, such as Notion or Gmail) mirror the tracker or provide read access. If one is switched off or unavailable, the CSV alone is enough.
 
@@ -105,7 +105,7 @@ These rules apply to every agent that fills a form, in `run` and in `review`.
 
 An application counts as sent when the user says so, or when the portal or an email confirms it. Then, without being asked:
 
-1. Update the tracker: `career-pilot tracker status <job_id> applied`, the CV and letter status that were really sent, and a note with the date and how it was confirmed. This moves the job's folder when `tracker.status_folders` is on.
+1. Update the tracker in one command: `career-pilot tracker update <job_id> --status applied --cv <file or not_needed> --letter-status <sent or not_needed> --notes "<date>, <how it was confirmed>"`. Use the CV and letter status that were really sent. This moves the job's folder when `tracker.status_folders` is on.
 2. Close that job's tabs.
 3. Archive the job's session, if it has one ("Using subagents").
 4. Look for the confirmation email (read-only, when an email adapter is enabled) and note it in the tracker. If none has arrived, say so; `sync` checks again later.
